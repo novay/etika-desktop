@@ -41,6 +41,8 @@ function Ready-Id([string]$id, $parent = $root) {
 function Invoke-Id([string]$id, $parent = $root) {
     $element = Ready-Id $id $parent
     $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    # WinUI posts Invoke asynchronously; allow the UI dispatcher to start handling it.
+    Start-Sleep -Milliseconds 150
 }
 function Set-Text([string]$id, [string]$value) {
     (Ready-Id $id).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($value)
@@ -49,9 +51,19 @@ function Select-Menu([string]$key) {
     (Ready-Id ('Nav_' + $key)).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
 }
 function Select-Choice([string]$id, [string]$choice) {
-    (Ready-Id $id).GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    $item = Wait-For { $e = Find-Name $root $choice; if (Visible $e) { $e } } "choice $choice"
-    $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    $combo = Ready-Id $id
+    $combo.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+    $item = Wait-For { $e = Find-Name $root $choice; if ((Visible $e) -and $e.Current.IsEnabled) { $e } } "choice $choice"
+    try { $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select() }
+    catch {
+        # Some WinUI providers report E_FAIL when the selection handler disables the control.
+        # Accept this only if the requested value actually became selected.
+        [void](Wait-For {
+            $selection = $combo.GetCurrentPattern([System.Windows.Automation.SelectionPattern]::Pattern).Current.GetSelection()
+            $selection.Count -gt 0 -and $selection[0].Current.Name -eq $choice
+        } "confirmed selection $choice")
+    }
+    Start-Sleep -Milliseconds 150
 }
 function Expect-Text([string]$text, $parent = $root) {
     [void](Wait-For { $e = Find-Name $parent $text; Visible $e } $text)
@@ -123,6 +135,7 @@ try {
     Set-Text 'SearchBox' 'tidak-ada-hasil'; Invoke-Id 'SearchSubmitButton'
     Expect-Text 'Tidak ada dokumen yang cocok dengan pencarian.'
     Set-Text 'SearchBox' ''; Invoke-Id 'SearchSubmitButton'
+    Expect-Text '25 dokumen'
     Select-Choice 'YearBox' '2025'
     [void](Wait-For { (Stats).last_year -eq 2025 } 'selected budget year')
     Control @{renamed=$true}; Invoke-Id 'ReloadButton'; Expect-Text 'Perubahan dari web (uji)'

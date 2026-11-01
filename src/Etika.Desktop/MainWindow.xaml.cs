@@ -18,7 +18,8 @@ public sealed partial class MainWindow : Window
     private WorkspaceProfile _profile = WorkspaceProfile.ForLevel(null);
     private WorkspaceMenu? _documentMenu;
     private string _view = "home";
-    private bool _busy, _loaded, _detailSelected, _preview;
+    private bool _busy, _loaded, _detailSelected;
+    private bool _preview = false;
     private int _page = 1, _lastPage = 1;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly HashSet<PdfWindow> _pdfWindows = [];
@@ -428,6 +429,7 @@ public sealed partial class MainWindow : Window
         Workspace.FooterMenuItems.Clear();
         SearchBox.Text = UserName.Text = UserRole.Text = AccountName.Text = AccountEmail.Text = AccountRole.Text = AccountScope.Text = "";
         HeaderAvatar.DisplayName = SidebarAvatar.DisplayName = AccountAvatar.DisplayName = "";
+        WelcomeTitle.Text = HomeRole.Text = HomeCount.Text = ConnectedServer.Text = "";
         _profile = WorkspaceProfile.ForLevel(null);
         _documentMenu = null;
         Workspace.Visibility = HeaderSearch.Visibility = ProfileButton.Visibility = Visibility.Collapsed;
@@ -443,7 +445,7 @@ public sealed partial class MainWindow : Window
         _busy = true;
         ErrorBar.IsOpen = false;
         ErrorBar.Severity = InfoBarSeverity.Error;
-        LoginPanel.IsEnabled = Workspace.IsEnabled = HeaderSearch.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = false;
+        LoginPanel.IsEnabled = Workspace.IsEnabled = SearchBox.IsEnabled = SearchSubmitButton.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = false;
         BusyBar.Visibility = Visibility.Visible;
         try { await operation(); }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
@@ -462,7 +464,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _busy = false;
-            LoginPanel.IsEnabled = Workspace.IsEnabled = HeaderSearch.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = true;
+            LoginPanel.IsEnabled = Workspace.IsEnabled = SearchBox.IsEnabled = SearchSubmitButton.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = true;
             BusyBar.Visibility = Visibility.Collapsed;
         }
     }

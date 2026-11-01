@@ -12,7 +12,7 @@
                 <Grid x:Name="HeaderSearch" Visibility="Collapsed" MaxWidth="560" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="16,0">
                     <TextBox x:Name="SearchBox" PlaceholderText="Cari kode atau nama subkegiatan" MaxLength="150"
                              KeyDown="Search_KeyDown" AutomationProperties.Name="Cari dokumen" />
-                    <Button Grid.Column="1" Click="Search_Click" AutomationProperties.Name="Jalankan pencarian">
+                    <Button x:Name="SearchSubmitButton" Grid.Column="1" Click="Search_Click" AutomationProperties.Name="Jalankan pencarian">
                         <FontIcon Glyph="&#xE721;" FontSize="16" />
                     </Button>
                 </Grid>

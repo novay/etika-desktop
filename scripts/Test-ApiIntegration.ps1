@@ -101,8 +101,13 @@ function Find-Pdf([string]$title) {
             [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty, ($title + ' — ETIKA'))))
 }
 function Open-Pdf([string]$id, [string]$title) {
+    Scroll-Attachments
     Invoke-Id $id
     return Wait-For { Find-Pdf $title } "PDF window $title"
+}
+function Scroll-Attachments {
+    $scroll = (Ready-Id 'DetailScroll').GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+    if ($scroll.Current.VerticallyScrollable) { $scroll.SetScrollPercent(-1,100) }
 }
 function Close-Pdf($window) { $window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close() }
 function Save-Window([string]$name) {
@@ -183,11 +188,12 @@ try {
         [void](Ready-Id 'PdfError' $pdf); Close-Pdf $pdf
     }
     # The attachment section scrolls on smaller Windows runner displays.
-    (Ready-Id 'DetailScroll').GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern).SetScrollPercent(-1,100)
+    Scroll-Attachments
     Invoke-Id 'missing'; Expect-Text 'Berkas belum tersedia.'
+    Scroll-Attachments
     Invoke-Id 'html'; Expect-Text 'Server tidak mengirim berkas PDF.'
+    Scroll-Attachments
     Invoke-Id 'large'; Expect-Text 'Ukuran PDF melebihi 25 MB.'
-    (Ready-Id 'DetailScroll').GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern).SetScrollPercent(-1,0)
     $pdf = Open-Pdf 'valid' 'PDF uji dua halaman'; Expect-Text 'Halaman 1 dari 2' $pdf
     Select-Menu 'logout'; [void](Ready-Id 'LoginButton')
     [void](Wait-For { $null -eq (Find-Pdf 'PDF uji dua halaman') } 'logout closes PDF windows')

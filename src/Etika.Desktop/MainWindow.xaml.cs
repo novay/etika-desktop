@@ -309,6 +309,7 @@ public sealed partial class MainWindow : Window
 
     private void ClearDetail()
     {
+        DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         _detailSelected = false;
         DetailTitle.Text = DetailSubtitle.Text = DetailStatus.Text = DetailBudget.Text = DetailNotes.Text = "";
         AttachmentsList.ItemsSource = null;
@@ -341,6 +342,7 @@ public sealed partial class MainWindow : Window
             DetailEmpty.Visibility = Visibility.Collapsed;
             DetailScroll.Visibility = Visibility.Visible;
             UpdateDocumentLayout();
+            DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
         });
     }
 

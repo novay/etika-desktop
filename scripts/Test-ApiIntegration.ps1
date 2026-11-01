@@ -163,7 +163,13 @@ try {
         if ((Stats).logins -ne $logins) { throw 'Remembered session issued an extra login.' }
         Write-Host 'PASS: remembered session restored after process restart.'
     }
-    Select-Menu 'settings'; Expect-Text 'Gelap'; Save-Window 'restored-dark'
+    Select-Menu 'settings'
+    $theme = Ready-Id 'ThemeBox'
+    [void](Wait-For {
+        $selection = $theme.GetCurrentPattern([System.Windows.Automation.SelectionPattern]::Pattern).Current.GetSelection()
+        $selection.Count -gt 0 -and $selection[0].Current.Name -eq 'Gelap'
+    } 'restored dark theme selection')
+    Save-Window 'restored-dark'
     Select-Menu 'all'; Select-FirstDocument
     $pdf = Open-Pdf 'valid' 'PDF uji dua halaman'
     Expect-Text 'Halaman 1 dari 2' $pdf
@@ -181,7 +187,7 @@ try {
     Invoke-Id 'large'; Expect-Text 'Ukuran PDF melebihi 25 MB.'
     $pdf = Open-Pdf 'valid' 'PDF uji dua halaman'; Expect-Text 'Halaman 1 dari 2' $pdf
     Select-Menu 'logout'; [void](Ready-Id 'LoginButton')
-    if ($null -ne (Find-Pdf 'PDF uji dua halaman')) { throw 'Logout left an authenticated PDF window open.' }
+    [void](Wait-For { $null -eq (Find-Pdf 'PDF uji dua halaman') } 'logout closes PDF windows')
     Write-Host 'PASS: native PDF rendering, page navigation, zoom, invalid/encrypted/missing/oversize PDF, and logout cleanup.'
     Login 'admin'; [void](Ready-Id 'Nav_all')
     Control @{expire=$true}; Invoke-Id 'ReloadButton'; [void](Ready-Id 'LoginButton')

@@ -13,6 +13,8 @@ namespace Etika.Desktop;
 public sealed partial class MainWindow : Window
 {
     private EtikaApiClient? _api;
+    private SubmissionWindow? _submissionWindow;
+    private DocumentDetail? _selectedDocument;
     private string? _challengeKey;
     private string? _challengeServer;
     private WorkspaceProfile _profile = WorkspaceProfile.ForLevel(null);
@@ -36,7 +38,7 @@ public sealed partial class MainWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1440, 960));
-        Closed += (_, _) => { _lifetime.Cancel(); ClosePdfs(); _api?.Dispose(); };
+        Closed += (_, _) => { _submissionWindow?.Close(); _lifetime.Cancel(); ClosePdfs(); _api?.Dispose(); };
     }
 
     private async void Root_Loaded(object sender, RoutedEventArgs e)
@@ -178,6 +180,13 @@ public sealed partial class MainWindow : Window
             AutomationProperties.SetAutomationId(item, "Nav_" + menu.Key);
             Workspace.MenuItems.Add(item);
         }
+        if (context.PengajuanEnabled)
+        {
+            var submit = NavItem("Pengajuan baru", "\uE710", "submission");
+            submit.SelectsOnInvoked = false;
+            AutomationProperties.SetAutomationId(submit, "Nav_submission");
+            Workspace.MenuItems.Add(submit);
+        }
         Workspace.FooterMenuItems.Clear();
         Workspace.FooterMenuItems.Add(NavItem("Akun saya", "\uE77B", "account"));
         Workspace.FooterMenuItems.Add(NavItem("Pengaturan", "\uE713", "settings"));
@@ -310,6 +319,8 @@ public sealed partial class MainWindow : Window
     private void ClearDetail()
     {
         DetailScroll.ChangeView(null, 0, null, disableAnimation: true);
+        _selectedDocument = null;
+        EditSubmissionButton.Visibility = Visibility.Collapsed;
         _detailSelected = false;
         DetailTitle.Text = DetailSubtitle.Text = DetailStatus.Text = DetailBudget.Text = DetailNotes.Text = "";
         AttachmentsList.ItemsSource = null;
@@ -330,6 +341,8 @@ public sealed partial class MainWindow : Window
             else
 #endif
                 doc = await _api!.DocumentAsync(selected.Id, RequestToken);
+            _selectedDocument = doc;
+            EditSubmissionButton.Visibility = doc.CanEdit ? Visibility.Visible : Visibility.Collapsed;
             DetailTitle.Text = doc.DisplayTitle;
             DetailSubtitle.Text = doc.DisplaySubtitle;
             DetailStatus.Text = doc.StatusLabel;
@@ -475,6 +488,28 @@ public sealed partial class MainWindow : Window
         }, ReloadChallengeAsync);
     }
 
+    private void Navigation_ItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (args.InvokedItemContainer?.Tag as string == "submission") OpenSubmission(null);
+    }
+    private void EditSubmission_Click(object sender, RoutedEventArgs e) => OpenSubmission(_selectedDocument?.Id);
+    private void OpenSubmission(string? id)
+    {
+        if (_busy || _preview || _api is null || YearBox.SelectedItem is not BudgetYear year) return;
+        if (_submissionWindow is not null) { _submissionWindow.Activate(); return; }
+        _submissionWindow = new SubmissionWindow(_api, year.Tahun, id, Root.ActualTheme);
+        _submissionWindow.Closed += (_, _) => _submissionWindow = null;
+        _submissionWindow.SessionExpired += async () => await RunAsync(async () => { ResetSession(); await ChallengeAsync(); });
+        _submissionWindow.Submitted += async result => await RunAsync(async () =>
+        {
+            await OpenDocumentMenuAsync(_profile.Documents[0]);
+            ErrorBar.Severity = InfoBarSeverity.Success;
+            ErrorBar.Message = result.Message + " Nomor dokumen: " + result.Id;
+            ErrorBar.IsOpen = true;
+        });
+        _submissionWindow.Activate();
+    }
+
     private void ClosePdfs()
     {
         foreach (var window in _pdfWindows.ToArray()) window.Close();
@@ -482,6 +517,7 @@ public sealed partial class MainWindow : Window
     }
     private void ResetSession()
     {
+        _submissionWindow?.Close();
         if (_api is not null) SessionStore.Clear(_api.Server);
         _api?.ClearToken();
         ClosePdfs();

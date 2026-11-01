@@ -18,11 +18,18 @@ jobs:
       - name: Verify application startup
         shell: pwsh
         run: ./scripts/Test-Startup.ps1 -PublishDirectory artifacts/Etika.Desktop
+      - name: Build Visual Studio Debug solution
+        run: dotnet build Etika.Desktop.sln -c Debug -p:Platform=x64
+      - name: Verify Debug application startup
+        shell: pwsh
+        run: ./scripts/Test-Startup.ps1 -PublishDirectory src/Etika.Desktop/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64 -DiagnosticsDirectory artifacts/debug-startup-diagnostics
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Etika.Desktop-startup-diagnostics
-          path: artifacts/startup-diagnostics
+          path: |
+            artifacts/startup-diagnostics
+            artifacts/debug-startup-diagnostics
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: success()

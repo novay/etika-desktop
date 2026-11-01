@@ -2,13 +2,13 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Status v0.1.1: build Release x64, build solution Debug x64, 15 pengujian klien, dan uji startup untuk kedua konfigurasi berhasil pada runner Windows. Integrasi staging dan pengujian fitur interaktif masih diperlukan.
+Status v0.1.2: build Release x64, build solution Debug x64, 16 pengujian klien, dan uji startup untuk kedua konfigurasi berhasil pada runner Windows. Integrasi staging dan pengujian fitur interaktif masih diperlukan.
 
 ## Unduh aplikasi Windows x64
 
-[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41281598091/artifacts/13074100028) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41281598091).
+[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41299327177/artifacts/13081035183) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41299327177).
 
-Ekstrak ZIP v0.1.1 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
+Ekstrak ZIP v0.1.2 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
 
 Aplikasi belum dapat login ke server produksi sebelum API desktop diterapkan dan diaktifkan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 
@@ -70,3 +70,9 @@ Backend berada pada repository ETIKA web existing melalui PR yang ditautkan di a
 Aplikasi mengakses API Laravel, bukan koneksi SQL. Daftar/detail dan unduhan diperiksa hak aksesnya di server. Pembaruan web tampil setelah desktop memuat ulang data. Tidak ada database operasional kedua dan tidak ada dump produksi dalam paket ini.
 
 Rincian kontrak terdapat di docs/API_CONTRACT.md. Validasi akhir Windows dan integrasi staging tercantum di docs/WINDOWS_ACCEPTANCE.md.
+
+## Jika kode verifikasi tidak muncul
+
+Desktop mengambil kode verifikasi dari GET /api/v1/auth/challenge. Server harus menyediakan API desktop pada [backend ETIKA](https://github.com/novay/etika.kukarkab.com/pull/1), dengan konfigurasi ETIKA_DESKTOP_API_ENABLED=true dan cache route/config yang sesuai. Menghubungkan repository desktop saja belum memasang endpoint ini pada server web.
+
+HTTP 404 pada layanan challenge/login ditampilkan sebagai pesan bahwa layanan login desktop belum tersedia. Tombol Masuk baru aktif setelah gambar CAPTCHA dan key berhasil dimuat. Kredensial tidak dikirim bila kode verifikasi belum siap. Setelah backend siap, klik Ganti kode untuk mencoba kembali.

@@ -279,6 +279,59 @@ await Check("caller cancellation reaches an active API request", async () =>
     catch (OperationCanceledException) { Assert(cancelled.IsCancellationRequested); return; }
     throw new Exception("Ignored caller cancellation");
 });
+await Check("rupiah input preserves integer amounts and rejects ambiguous decimals", () =>
+{
+    Assert(SubmissionValidation.Rupiah("1.250.000") == "1250000");
+    Assert(SubmissionValidation.Rupiah("999999999999999") == "999999999999999");
+    foreach (var invalid in new[] { "-1", "1.25", "1,25", "1e6", "1.2345", "1000000000000000", "" })
+    {
+        bool rejected = false;
+        try { SubmissionValidation.Rupiah(invalid); } catch (ArgumentException) { rejected = true; }
+        Assert(rejected, "Accepted " + invalid);
+    }
+    return Task.CompletedTask;
+});
+await Check("upload validation bounds each PDF and rejects disguised files", () =>
+{
+    SubmissionValidation.Files([new("1", "good.pdf", "%PDF-valid"u8.ToArray())]);
+    foreach (var file in new[] { new UploadFile("1", "bad.pdf", "<html>bad"u8.ToArray()),
+        new UploadFile("1", "bad.exe", "%PDF-bad"u8.ToArray()), new UploadFile("1", "big.pdf", "%PDF-"u8.ToArray().Concat(new byte[SubmissionValidation.MaxFileBytes]).ToArray()) })
+    {
+        bool rejected = false;
+        try { SubmissionValidation.Files([file]); } catch (ArgumentException) { rejected = true; }
+        Assert(rejected);
+    }
+    return Task.CompletedTask;
+});
+await Check("multipart submission carries exact fields bearer and PDF without local paths", async () =>
+{
+    using var api = new EtikaApiClient("https://etika.example.test", new HttpClient(new AsyncStubHandler(async request =>
+    {
+        Assert(request.RequestUri!.AbsolutePath == "/api/v1/pengajuan");
+        Assert(request.Headers.Authorization?.Parameter == "test-token");
+        Assert(request.Content!.Headers.ContentType!.MediaType == "multipart/form-data");
+        var body = await request.Content.ReadAsStringAsync();
+        Assert(body.Contains("request_id") && body.Contains("stable-request-id") && body.Contains("999999999999999"));
+        Assert(body.Contains("file[5]") && body.Contains("%PDF-test") && !body.Contains("private-folder"));
+        return Json("""{"data":{"id":"123","message":"Terkirim"}}""");
+    })));
+    api.SetToken("test-token");
+    var input = new SubmissionInput("stable-request-id",2026,"11",null,"submit","2026-11-02","08:30","Belanja",null,"999999999999999", "Catatan");
+    var result = await api.SubmitAsync(null, input, [new("5", "C:/private-folder/file.pdf", "%PDF-test"u8.ToArray())]);
+    Assert(result.Id == "123");
+});
+await Check("submission validation errors display field messages", async () =>
+{
+    using var api = Client(_ => Json("""{"message":"Validation failed","errors":{"file.1":["Unggah KAK"],"pagu_rka":["Pagu tidak valid"]}}""", HttpStatusCode.UnprocessableEntity));
+    try { await api.SubmissionOptionsAsync(2026, 1, ""); }
+    catch (ApiException ex) { Assert(ex.Message.Contains("Unggah KAK") && ex.Message.Contains("Pagu tidak valid")); return; }
+    throw new Exception("Expected validation failure");
+});
+await Check("read-only servers omit submission capabilities safely", async () =>
+{
+    using var api = Client(_ => Json("""{"data":{"tahun_aktif":2026,"tahun":[]}}"""));
+    Assert(!(await api.ContextAsync()).PengajuanEnabled);
+});
 Console.WriteLine($"{passed} core client checks passed.");
 
 sealed class UnknownLengthContent(byte[] bytes) : HttpContent

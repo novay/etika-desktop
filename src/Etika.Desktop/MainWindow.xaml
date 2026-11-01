@@ -88,7 +88,7 @@
         </ScrollViewer>
         <NavigationView x:Name="Workspace" Grid.Row="3" Visibility="Collapsed" AutomationProperties.AutomationId="WorkspaceNavigation"
                         PaneDisplayMode="Auto" OpenPaneLength="248" CompactPaneLength="56" IsPaneOpen="True"
-                        IsBackButtonVisible="Collapsed" IsSettingsVisible="False" IsTitleBarAutoPaddingEnabled="False" SelectionChanged="Navigation_SelectionChanged">
+                        IsBackButtonVisible="Collapsed" IsSettingsVisible="False" IsTitleBarAutoPaddingEnabled="False" SelectionChanged="Navigation_SelectionChanged" ItemInvoked="Navigation_ItemInvoked">
             <NavigationView.PaneFooter>
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="16,16,12,20">
                     <PersonPicture x:Name="SidebarAvatar" Width="36" Height="36" />
@@ -211,6 +211,7 @@
                                             <TextBlock Text="Pagu RKA" Style="{StaticResource EtikaCaptionStyle}" />
                                             <TextBlock x:Name="DetailBudget" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold" />
                                         </StackPanel>
+                                        <Button x:Name="EditSubmissionButton" Content="Sunting / perbaiki pengajuan" Click="EditSubmission_Click" Visibility="Collapsed" />
                                         <TextBlock x:Name="DetailNotes" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
                                         <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
                                         <TextBlock x:Name="AttachmentHeading" Text="Lampiran PDF" FontWeight="SemiBold" FontSize="16" />

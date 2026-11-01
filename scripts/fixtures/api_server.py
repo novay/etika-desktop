@@ -1,12 +1,14 @@
 """Loopback-only synthetic API for Windows client tests; not a Laravel/DB substitute."""
 import argparse, base64, json, math, threading, time, uuid
+from email.parser import BytesParser
+from email.policy import default
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 FIXTURES = json.loads(Path(__file__).with_name('documents.json').read_text())
-STATE = {'mode': 'normal', 'empty': False, 'renamed': False, 'tokens': {}, 'logins': 0, 'challenges': 0, 'last_year': 2026, 'last_search': '', 'last_page': 1, 'last_status': None}
+STATE = {'mode': 'normal', 'empty': False, 'renamed': False, 'tokens': {}, 'logins': 0, 'challenges': 0, 'last_year': 2026, 'last_search': '', 'last_page': 1, 'last_status': None, 'submitted': None, 'receipts': {}, 'writes': 0, 'submission_mode': 'normal'}
 LOCK = threading.RLock()
 ROLES = {'admin': 'Admin', 'eksekutif': 'Eksekutif', 'skpd': 'SKPD', 'berkas': 'Berkas', 'tapd': 'TAPD', 'multi': 'SKPD|TAPD'}
 
@@ -23,13 +25,46 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers(); self.wfile.write(payload)
         except (BrokenPipeError, ConnectionResetError): pass
         self.close_connection = True
+    def submission_post(self):
+        role = STATE['tokens'].get(self.headers.get('Authorization', '').removeprefix('Bearer '))
+        if not role: return self.respond(401, {'message':'Sesi berakhir.'})
+        if 'SKPD' not in role: return self.respond(403, {'message':'Tidak diizinkan.'})
+        raw = self.rfile.read(int(self.headers.get('Content-Length','0')))
+        message = BytesParser(policy=default).parsebytes(('Content-Type: '+self.headers.get('Content-Type','')+'\r\n\r\n').encode()+raw)
+        fields = {}; files = {}
+        for part in message.iter_parts():
+            name = part.get_param('name', header='content-disposition')
+            value = part.get_payload(decode=True)
+            if part.get_filename(): files[name] = value
+            else: fields[name] = value.decode()
+        key = fields.get('request_id')
+        with LOCK:
+            if key in STATE['receipts']: return self.respond(200, {'data':STATE['receipts'][key]})
+            if STATE['submission_mode'] == 'conflict': return self.respond(409, {'message':'Dokumen berubah di server. Buka ulang formulir.'})
+            if fields.get('action') == 'submit' and not files.get('file[1]',b'').startswith(b'%PDF-'):
+                return self.respond(422, {'message':'Unggah KAK','errors':{'file.1':['Unggah KAK']}})
+            doc = STATE['submitted'] or {'id':'101','tahun':2026,'jenis':'Belanja','unit_kode':'UNIT-UJI','unit_nama':'Unit Uji','unit_singkatan':'UNIT UJI','subkegiatan_kode':'NEW.001','subkegiatan_nama':'Pengajuan baru uji','pagu_ppas':'5000000','status_verif':0}
+            doc.update({k:fields.get(k) for k in ('jenis','pagu_rka','tanggal','waktu','pembiayaan','keterangan')})
+            doc.update(status=1 if fields.get('action') in ('submit','resubmit') else doc.get('status',2), version=uuid.uuid4().hex*2, can_edit=True)
+            doc['status_label'] = 'Revisi' if doc['status'] == 2 else 'Pemeriksaan berkas'
+            doc['lampiran'] = [{'id':'valid','lampiran_id':'1','nama':'KAK uji','size':100}]
+            STATE['submitted']=doc; STATE['writes']+=1
+            result={'id':'101','message':'Perubahan disimpan.' if fields.get('action')=='save' else 'Dokumen dikirim ke pemeriksaan berkas.'}
+            STATE['receipts'][key]=result
+            if STATE['submission_mode']=='lost':
+                STATE['submission_mode']='normal'
+                return self.respond(503, {'message':'Simulated lost acknowledgement after commit'})
+            return self.respond(200, {'data':result})
     def do_POST(self):
+        if self.path.startswith('/api/v1/pengajuan'): return self.submission_post()
         try: data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))) or b'{}')
         except ValueError: return self.respond(400, {'message': 'Invalid JSON'})
         if self.path == '/__control':
             with LOCK:
-                for key in ('mode', 'empty', 'renamed'):
+                for key in ('mode', 'empty', 'renamed', 'submission_mode'):
                     if key in data: STATE[key] = data[key]
+                if data.get('revision') and STATE['submitted']:
+                    STATE['submitted'].update(status=2,status_label='Revisi',catatan_revisi='Perbaiki rincian anggaran dan KAK.',version=uuid.uuid4().hex*2)
                 if data.get('expire'): STATE['tokens'].clear()
             return self.respond(200, {'ok': True})
         if self.path == '/api/v1/auth/login':
@@ -58,11 +93,12 @@ class Handler(BaseHTTPRequestHandler):
                 'subkegiatan_nama': 'Perubahan dari web (uji)' if i == 1 and STATE['renamed'] else f'Dokumen uji {i:02}',
                 'pagu_rka': str(1000000*i), 'pagu_ppas': str(1000000*i), 'status': stage, 'status_verif': 0,
                 'status_label': {1:'Pemeriksaan berkas',2:'Revisi',3:'Verifikasi TAPD'}[stage]})
+        if STATE['submitted']: result.insert(0, dict(STATE['submitted']))
         return result
     def do_GET(self):
         parsed = urlparse(self.path); path = parsed.path; query = parse_qs(parsed.query)
         if path == '/__stats':
-            return self.respond(200, {k: STATE[k] for k in ('logins','challenges','mode','last_year','last_search','last_page','last_status')})
+            return self.respond(200, {k: STATE[k] for k in ('logins','challenges','mode','last_year','last_search','last_page','last_status','writes')})
         if path == '/api/v1/auth/challenge':
             with LOCK: STATE['challenges'] += 1
             return self.respond(200, {'data': {'key': 'fixture-key', 'img': FIXTURES['captcha']}})
@@ -71,7 +107,12 @@ class Handler(BaseHTTPRequestHandler):
         if not role: return self.respond(401, {'message': 'Sesi berakhir. Silakan masuk kembali.'})
         if STATE['mode'] == 'inactive': return self.respond(403, {'message': 'Akun Anda dinonaktifkan.'})
         if path == '/api/v1/me': return self.respond(200, {'data': self.user(role)})
-        if path == '/api/v1/context': return self.respond(200, {'data': {'tahun_aktif': 2026, 'tahun': [{'tahun': 2026,'aktif':True,'perubahan':False},{'tahun':2025,'aktif':False,'perubahan':False}]}})
+        if path == '/api/v1/context': return self.respond(200, {'data': {'pengajuan_enabled':'SKPD' in role, 'tahun_aktif': 2026, 'tahun': [{'tahun': 2026,'aktif':True,'perubahan':False},{'tahun':2025,'aktif':False,'perubahan':False}]}})
+        if path == '/api/v1/pengajuan/options':
+            return self.respond(200, {'data':{'unit_nama':'Unit Uji','tahun':2026,'subkegiatan':[{'id':'11','kode':'NEW.001','nama':'Pengajuan baru uji','pagu_ppas':'5000000'}], 'last_page':1,'lampiran':[{'id':'1','jenis':'Belanja','nama':'KAK','wajib':True}], 'max_file_bytes':5120000,'max_total_bytes':26214400}})
+        if path.startswith('/api/v1/pengajuan/'):
+            if not STATE['submitted']: return self.respond(404, {'message':'Tidak ditemukan'})
+            return self.respond(200, {'data':{'document':STATE['submitted'], 'lampiran':[{'id':'1','jenis':'Belanja','nama':'KAK','wajib':True}]}})
         if path == '/api/v1/dokumen':
             if STATE['mode'] == 'failure': return self.respond(503, {'message': 'SQLSTATE fixture diagnostic must never reach UI'})
             if STATE['mode'] == 'slow': time.sleep(8)
@@ -86,6 +127,7 @@ class Handler(BaseHTTPRequestHandler):
             identifier = path.split('/')[-1]
             doc = next((d for d in self.documents(role, STATE['last_year']) if d['id'] == identifier), None)
             if doc is None: return self.respond(404, {'message':'Dokumen tidak ditemukan.'})
+            if identifier == '101': return self.respond(200, {'data':doc})
             names = [('valid','PDF uji dua halaman'),('broken','PDF rusak'),('locked','PDF terkunci'),('missing','PDF hilang'),('html','Respons bukan PDF'),('large','PDF terlalu besar')]
             doc['lampiran'] = [{'id': key,'nama':name,'size':0} for key,name in names]
             doc['keterangan'] = 'Data sintetis untuk pengujian aplikasi Windows.'

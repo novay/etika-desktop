@@ -32,7 +32,7 @@ public sealed class EtikaApiClient : IDisposable
         _base = new Uri(uri, uri.AbsolutePath.EndsWith("/api/v1/", StringComparison.Ordinal)
             ? "./" : "api/v1/");
         _http = http ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
-        _http.Timeout = TimeSpan.FromSeconds(30);
+        _http.Timeout = TimeSpan.FromMinutes(2);
     }
 
     public void SetToken(string? token) => _token = token;
@@ -75,13 +75,38 @@ public sealed class EtikaApiClient : IDisposable
             $"dokumen?tahun={year}&page={page}&per_page=20&q={Uri.EscapeDataString(search)}{filter}", null, ct);
     }
 
+    public Task<SubmissionOptions> SubmissionOptionsAsync(int year, int page, string search, CancellationToken ct = default) =>
+        DataAsync<SubmissionOptions>(HttpMethod.Get, $"pengajuan/options?tahun={year}&page={page}&q={Uri.EscapeDataString(search)}", null, ct);
+    public Task<SubmissionEdit> SubmissionEditAsync(string id, CancellationToken ct = default) =>
+        DataAsync<SubmissionEdit>(HttpMethod.Get, $"pengajuan/{Uri.EscapeDataString(id)}", null, ct);
+
+    public async Task<SubmissionResult> SubmitAsync(string? id, SubmissionInput input, IReadOnlyList<UploadFile> files, CancellationToken ct = default)
+    {
+        SubmissionValidation.Files(files);
+        using var form = new MultipartFormDataContent();
+        using var fields = JsonDocument.Parse(JsonSerializer.Serialize(input, Json));
+        foreach (var field in fields.RootElement.EnumerateObject())
+            if (field.Value.ValueKind != JsonValueKind.Null) form.Add(new StringContent(field.Value.ToString(), Encoding.UTF8), field.Name);
+        foreach (var file in files)
+        {
+            var content = new ByteArrayContent(file.Bytes);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+            // Names are generated locally; never transmit an arbitrary local path.
+            form.Add(content, $"file[{file.LampiranId}]", "lampiran.pdf");
+        }
+        return await DataAsync<SubmissionResult>(HttpMethod.Post,
+            id is null ? "pengajuan" : $"pengajuan/{Uri.EscapeDataString(id)}", form, ct);
+    }
+
     public async Task LogoutAsync(CancellationToken ct = default)
     {
         try
         {
             if (HasToken)
             {
-                using var response = await SendAsync(HttpMethod.Post, "auth/logout", null, ct);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                using var response = await SendAsync(HttpMethod.Post, "auth/logout", null, timeout.Token);
             }
         }
         finally { ClearToken(); }
@@ -111,7 +136,7 @@ public sealed class EtikaApiClient : IDisposable
     private async Task<T> JsonAsync<T>(HttpMethod method, string path, object? body, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        timeout.CancelAfter(body is HttpContent ? TimeSpan.FromMinutes(2) : TimeSpan.FromSeconds(30));
         ct = timeout.Token;
         using var response = await SendAsync(method, path, body, ct);
         if (response.Content.Headers.ContentType?.MediaType != "application/json")
@@ -128,7 +153,8 @@ public sealed class EtikaApiClient : IDisposable
         using var request = new HttpRequestMessage(method, new Uri(_base, path));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (HasToken) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
-        if (body is not null)
+        if (body is HttpContent content) request.Content = content;
+        else if (body is not null)
             request.Content = new StringContent(JsonSerializer.Serialize(body, Json), Encoding.UTF8, "application/json");
         var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         if (response.IsSuccessStatusCode) return response;
@@ -163,6 +189,15 @@ public sealed class EtikaApiClient : IDisposable
                     if (json.RootElement.TryGetProperty("message", out var msg)
                         && msg.ValueKind == JsonValueKind.String && msg.GetString() is string value)
                         message = value[..Math.Min(value.Length, 500)];
+                    if (response.StatusCode == HttpStatusCode.UnprocessableEntity
+                        && json.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+                    {
+                        var messages = errors.EnumerateObject().SelectMany(x => x.Value.ValueKind == JsonValueKind.Array
+                            ? x.Value.EnumerateArray().Where(v => v.ValueKind == JsonValueKind.String).Select(v => v.GetString()!) : [])
+                            .Take(8).Select(v => v[..Math.Min(v.Length, 300)]);
+                        var details = string.Join("\n", messages);
+                        if (details.Length > 0) message = details;
+                    }
                 }
                 catch (JsonException) { /* retain the status-specific message */ }
             }

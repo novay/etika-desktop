@@ -2,13 +2,13 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Source v0.2.0: ruang kerja WinUI dengan menu peran, kartu dokumen, tema, dan pratinjau UI khusus Debug. Panduan [desain/menu](docs/UI_WORKSPACE.md) dan [F5 + XAML Hot Reload](docs/DEVELOPMENT_WINDOWS.md). Paket v0.1.2 di bawah adalah build sebelumnya; lihat workflow terbaru untuk hasil validasi source ini.
+Status v0.2.0: build Release/Debug x64, startup, 20 pemeriksaan klien, navigasi enam kombinasi peran, dan penguncian pratinjau pada Release lulus di Windows. Panduan [desain/menu](docs/UI_WORKSPACE.md) dan [F5 + XAML Hot Reload](docs/DEVELOPMENT_WINDOWS.md). Hot Reload interaktif, integrasi staging, dan pengujian perangkat ARM64 masih perlu dilakukan pada lingkungan tujuan.
 
 ## Unduh aplikasi Windows x64
 
-[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41299327177/artifacts/13081035183) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41299327177).
+[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41325353505/artifacts/13090398862) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41325353505).
 
-Ekstrak ZIP v0.1.2 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
+Ekstrak ZIP v0.2.0 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
 
 Login memerlukan API desktop yang sudah diterapkan dan diaktifkan pada server tujuan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 

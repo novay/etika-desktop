@@ -15,4 +15,12 @@ Gunakan aplikasi Laravel staging dan salinan database development. Tahap ini mem
 11. Uji login web, monitoring existing, dan akses lampiran web sesudah perubahan backend.
 12. Setelah seluruh langkah lolos, catat hasil, versi Windows, arsitektur, commit backend/desktop, dan jalur deployment yang diuji.
 
+Untuk workspace v0.2.0:
+
+- Bandingkan menu Admin, Eksekutif, SKPD, Berkas, TAPD, dan akun dengan beberapa peran terhadap docs/UI_WORKSPACE.md. Uji filter tahap bersama tahun, pencarian, dan paginasi memakai akun staging.
+- Periksa daftar/rincian berdampingan pada lebar besar, serta tombol Kembali ke daftar pada jendela sempit. Periksa sidebar saat melebar, menyusut, dan menggunakan keyboard.
+- Buka Akun saya dan Pengaturan, lalu periksa tema mengikuti Windows, terang, dan gelap.
+- Dengan profil Debug ETIKA UI Preview, ganti peran tanpa login. Ubah padding dan teks pada XAML saat F5 berjalan untuk memverifikasi Hot Reload pada instalasi IDE yang dipakai.
+- Jalankan profil normal kembali untuk login dan PDF sungguhan. Mode pratinjau memakai data sintetis dan tidak menggantikan pengujian otorisasi di server.
+
 Tahap berikutnya sesudah penerimaan alur baca adalah pengajuan dan unggahan, diikuti catatan pemeriksaan serta anotasi PDF. Aturan tulis dan status akan berada pada backend bersama.

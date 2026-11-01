@@ -15,7 +15,17 @@ jobs:
           dotnet-version: '10.0.x'
       - run: dotnet run --project tests/Etika.Core.Tests
       - run: dotnet publish src/Etika.Desktop/Etika.Desktop.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained true -o artifacts/Etika.Desktop
+      - name: Verify application startup
+        shell: pwsh
+        run: ./scripts/Test-Startup.ps1 -PublishDirectory artifacts/Etika.Desktop
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Etika.Desktop-startup-diagnostics
+          path: artifacts/startup-diagnostics
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: Etika.Desktop-win-x64
           path: artifacts/Etika.Desktop

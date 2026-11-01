@@ -1,30 +1,37 @@
-# Validasi Fase 1
+# Validasi ETIKA Desktop v0.1.1
 
-Tanggal: 1 November 2026. Baseline backend: e265090ce54c912abbb169a8b7789309df2ce99d.
+Tanggal: 1 November 2026 (WITA). Commit source yang diuji: 648b7ed8a45fac8a04fe4cddbea6bda625dadf1d.
 
 | Pemeriksaan | Hasil |
 | --- | --- |
-| API Laravel 10.49.1, PHP 8.3.6, SQLite sintetis | 15 tes / 83 assertions lulus |
-| Workflow API di GitHub Actions | Lulus: https://github.com/novay/etika.kukarkab.com/actions/runs/41277406920 |
-| Klien C# | 15 pemeriksaan lulus di Linux dan runner Windows |
-| Kompilasi Etika.Core | Lulus |
-| Pemeriksaan semantik C# UI terhadap referensi WinUI | Lulus dengan stub sementara untuk field yang biasanya dihasilkan XAML |
-| XML/XAML dan nama event handler | Struktur terbaca, semua handler yang dirujuk tersedia |
-| Pemulihan dependensi proyek WinUI | Lulus |
-| Build penuh WinUI | Lulus pada runner Windows x64: https://github.com/novay/etika-desktop/actions/runs/41277728059 |
-| Artifact publish Windows x64 | Tersedia: https://github.com/novay/etika-desktop/actions/runs/41277728059/artifacts/13071587759 |
-| Menjalankan UI dan render PDF di Windows | Belum dilakukan |
-| Integrasi server ETIKA produksi/staging | Belum dilakukan |
-| Regression test seluruh web existing / MySQL | Belum dilakukan |
+| API Laravel 10.49.1 / PHP 8.3.6 / SQLite sintetis | 15 tes / 83 assertions lulus pada validasi backend sebelumnya |
+| Klien C# pada Windows | 15 pemeriksaan lulus |
+| Publish Release Windows x64 | Lulus |
+| Startup paket Release | Jendela ETIKA Desktop muncul dan proses tetap berjalan |
+| Build solution Visual Studio, Debug / x64 | Lulus, tanpa error |
+| Startup output Debug | Jendela ETIKA Desktop muncul dan proses tetap berjalan |
+| Interaksi seluruh fitur UI dan render PDF | Belum diuji menyeluruh |
+| Integrasi MySQL/storage pada server staging | Belum diuji |
+| Windows ARM64 | Konfigurasi source disediakan; belum diuji pada runner ARM64 |
 
-Pemeriksaan semantik C# UI bukan build XAML dan bukan uji tampilan. Stub disimpan sementara di luar source deliverable; tidak ikut ZIP atau proyek Windows.
+[Hasil build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41281598091). [Paket publish Windows x64](https://github.com/novay/etika-desktop/actions/runs/41281598091/artifacts/13074100028).
 
-Cakupan API: akses lintas unit/pengguna dan file, antrean tim/stage Berkas/TAPD, peran Admin/Eksekutif dan peran tidak dikenal, akun nonaktif, token salah kemampuan/kedaluwarsa, penolakan cookie web, pencabutan token perangkat saja, identitas tanpa field sensitif, pilihan tahun, filter/paginasi, data terhapus, PDF sah/palsu/terlalu besar/hilang, traversal storage, CAPTCHA nyata dengan jawaban salah, login dengan validasi CAPTCHA deterministik, input bertipe tidak benar, dan lockout percobaan gagal.
+## Perbaikan kegagalan startup
 
-Cakupan klien: server HTTP tidak sah, normalisasi URL API/subdirektori, encoding pencarian, header Bearer, 401, logout saat offline, ketepatan ID/rupiah besar, redirect, signature dan ukuran PDF, JSON tidak valid, payload login, serta penghapusan token lama pada login gagal.
+Paket awal lolos kompilasi, tetapi berhenti saat startup dengan kode 0xC000027B. Gejalanya berhasil direproduksi pada runner Windows. Paket publish tidak menyertakan PRI/XBF aplikasi yang diperlukan untuk memuat tampilan.
 
-Satu peringatan libpng pada gambar latar CAPTCHA bawaan dependency muncul ketika pengujian challenge; tes tetap lulus.
+Konfigurasi EnableMsixTooling diaktifkan sehingga pipeline PRI WinUI menyertakan resource aplikasi pada hasil publish. Pengujian ulang Release serta output Debug berhasil membuka jendela utama.
 
-Workflow Windows telah dijalankan untuk commit c6c58f951c86fa6990a5138363041397760bd7da dan berhasil menghasilkan paket publish x64. Build Linux sebelumnya berhenti pada tool XAML/MakePRI khusus Windows; hambatan kompilasi tersebut sudah diselesaikan melalui runner Windows. Pengujian tampilan interaktif, render PDF, dan koneksi staging tetap belum dilakukan. Installer dan penandatanganan belum tersedia.
+Etika.Desktop.sln, profil Visual Studio Unpackaged, konfigurasi x64/ARM64, dan pencatatan exception startup ditambahkan. Panduan IDE: [DEVELOPMENT_WINDOWS.md](DEVELOPMENT_WINDOWS.md).
 
-Backend review: https://github.com/novay/etika.kukarkab.com/pull/1
+## Batas uji startup
+
+scripts/Test-Startup.ps1 menunggu window handle dengan judul ETIKA Desktop, lalu memastikan proses tetap hidup selama tiga detik. Ini membuktikan inisialisasi dan pembukaan jendela; belum memvalidasi semua interaksi, login terhadap backend, anotasi, maupun isi PDF.
+
+Pengecualian startup yang mencapai kode aplikasi dicatat pada %LOCALAPPDATA%\ETIKA\Desktop\Logs\startup.log. Kegagalan loader sebelum kode aplikasi berjalan dapat memerlukan Windows Event Viewer.
+
+## Backend dan distribusi
+
+Backend review: https://github.com/novay/etika.kukarkab.com/pull/1. API belum diterapkan ke produksi melalui pekerjaan desktop ini. Harness backend memakai data sintetis; dump produksi tidak disertakan pada repository.
+
+Paket desktop adalah folder publish portable. Ekstrak seluruh ZIP ke folder baru dan pertahankan file pendukung. Installer dan penandatanganan belum dibuat.

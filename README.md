@@ -2,13 +2,13 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Status: implementasi alur baca awal. Build Windows x64 (termasuk XAML) dan 15 pengujian klien berhasil di GitHub Actions. Pengujian UI interaktif dan integrasi staging masih perlu dilakukan.
+Status v0.1.1: build Release x64, build solution Debug x64, 15 pengujian klien, dan uji startup untuk kedua konfigurasi berhasil pada runner Windows. Integrasi staging dan pengujian fitur interaktif masih diperlukan.
 
 ## Unduh aplikasi Windows x64
 
-[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41277728059/artifacts/13071587759) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41277728059).
+[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41281598091/artifacts/13074100028) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41281598091).
 
-Ekstrak seluruh ZIP ke satu folder, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
+Ekstrak ZIP v0.1.1 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
 
 Aplikasi belum dapat login ke server produksi sebelum API desktop diterapkan dan diaktifkan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 
@@ -42,6 +42,10 @@ Pasang .NET SDK 10.0, kemudian dari direktori ini:
     dotnet run --project tests/Etika.Core.Tests
 
 Hasil lokal: 15 pemeriksaan lulus. Lihat docs/VALIDATION.md untuk batas verifikasi.
+
+## Membuka source di Visual Studio
+
+Buka Etika.Desktop.sln menggunakan Visual Studio 2026 dengan workload WinUI application development. Pilih proyek Etika.Desktop sebagai startup project, konfigurasi Debug / x64, profil ETIKA Desktop (Unpackaged), lalu tekan F5. [Panduan IDE dan debugging](docs/DEVELOPMENT_WINDOWS.md).
 
 ## Build dan menjalankan di Windows
 

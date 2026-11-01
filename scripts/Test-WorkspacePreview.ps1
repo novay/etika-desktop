@@ -67,7 +67,7 @@ try {
             }
             $root = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
             if ($PreviewMustBeDisabled) {
-                [void](Wait-Element $root 'LoginButton')
+                [void](Wait-Element $root 'ServerBox')
                 if ($null -ne (Find-ById $root 'Nav_all')) { throw 'Release allowed debug preview navigation.' }
                 Write-Host 'PASS: Release ignores ETIKA_UI_PREVIEW and displays login.'
                 continue
@@ -79,7 +79,7 @@ try {
             }
             if ($case.Role -eq 'Admin') { Save-Window $process 'admin-home' }
             $menu = Find-ById $root ('Nav_' + $case.Menus[0])
-            $menu.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+            $menu.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
             $list = Wait-Element $root 'DocumentsList'
             $first = $list.FindFirst([System.Windows.Automation.TreeScope]::Children,
                 [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,

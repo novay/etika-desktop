@@ -86,7 +86,7 @@
         </ScrollViewer>
         <NavigationView x:Name="Workspace" Grid.Row="3" Visibility="Collapsed" AutomationProperties.AutomationId="WorkspaceNavigation"
                         PaneDisplayMode="Auto" OpenPaneLength="248" CompactPaneLength="56" IsPaneOpen="True"
-                        IsBackButtonVisible="Collapsed" IsTitleBarAutoPaddingEnabled="False" ItemInvoked="Navigation_Invoked">
+                        IsBackButtonVisible="Collapsed" IsTitleBarAutoPaddingEnabled="False" SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.PaneFooter>
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="16,16,12,20">
                     <PersonPicture x:Name="SidebarAvatar" Width="36" Height="36" />

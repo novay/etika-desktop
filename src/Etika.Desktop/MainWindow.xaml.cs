@@ -156,6 +156,7 @@ public sealed partial class MainWindow : Window
         Workspace.FooterMenuItems.Clear();
         Workspace.FooterMenuItems.Add(NavItem("Akun saya", "\uE77B", "account"));
         Workspace.FooterMenuItems.Add(NavItem("Keluar", "\uE8AC", "logout"));
+        if (Workspace.SettingsItem is NavigationViewItem settings) settings.Content = "Pengaturan";
         HomeShortcuts.ItemsSource = _profile.Documents;
         _documentMenu = _profile.Documents[0];
         HomeCountCaption.Text = _documentMenu.Title;
@@ -192,11 +193,11 @@ public sealed partial class MainWindow : Window
         UpdateDocumentLayout();
     }
 
-    private async void Navigation_Invoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    private async void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (_busy) return;
-        if (args.IsSettingsInvoked) { ShowView("settings"); return; }
-        switch (args.InvokedItemContainer?.Tag)
+        if (args.IsSettingsSelected) { ShowView("settings"); return; }
+        switch ((args.SelectedItem as NavigationViewItem)?.Tag)
         {
             case WorkspaceMenu menu: await RunAsync(() => OpenDocumentMenuAsync(menu)); break;
             case "home":

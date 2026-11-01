@@ -4,3 +4,4 @@ obj/
 artifacts/
 *.user
 *.suo
+__pycache__/

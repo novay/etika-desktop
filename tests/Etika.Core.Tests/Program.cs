@@ -205,7 +205,95 @@ await Check("sends stage filters together with search and pagination to the API"
     });
     await api.DocumentsAsync(2026, 2, "a&b", WorkspaceProfile.ForLevel("TAPD").Documents.Single().Status);
 });
+await Check("server failures do not expose database diagnostics", async () =>
+{
+    using var api = Client(_ => Json("""{"message":"SQLSTATE private diagnostic"}""", HttpStatusCode.ServiceUnavailable));
+    try { await api.MeAsync(); }
+    catch (ApiException error)
+    {
+        Assert(error.StatusCode == 503 && !error.Message.Contains("SQLSTATE") && error.Message.Contains("gangguan"));
+        return;
+    }
+    throw new Exception("Expected service error");
+});
+await Check("theme and server settings preserve each other and legacy settings remain readable", () =>
+{
+    string folder = Path.Combine(Path.GetTempPath(), "etika-test-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(folder);
+    try
+    {
+        string path = Path.Combine(folder, "settings.json");
+        File.WriteAllText(path, """{"server":"https://legacy.example.test"}""");
+        var store = new PreferencesStore(path);
+        Assert(store.Load().Server == "https://legacy.example.test" && store.Load().Theme == 0);
+        Assert(store.Save(store.Load() with { Theme = 2 }));
+        Assert(store.Save(store.Load() with { Server = "https://new.example.test" }));
+        Assert(store.Load().Theme == 2 && store.Load().Server == "https://new.example.test");
+        Assert(Directory.GetFiles(folder).Length == 1);
+    }
+    finally { Directory.Delete(folder, recursive: true); }
+    return Task.CompletedTask;
+});
+await Check("corrupt settings and unsupported themes recover to usable defaults", () =>
+{
+    string file = Path.GetTempFileName();
+    try
+    {
+        var store = new PreferencesStore(file);
+        File.WriteAllText(file, "{bad");
+        Assert(store.Load().Server == DesktopPreferences.DefaultServer);
+        File.WriteAllText(file, """{"server":"","theme":-5}""");
+        Assert(store.Load().Theme == 0 && store.Load().Server == DesktopPreferences.DefaultServer);
+    }
+    finally { File.Delete(file); }
+    return Task.CompletedTask;
+});
+await Check("PDF raster dimensions remain bounded for normal and extreme page shapes", () =>
+{
+    foreach (var (width, height) in new[] { (595d, 842d), (1d, 1_000_000d), (1_000_000d, 1d), (1e300, 1e-300) })
+    {
+        var size = PdfRenderSize.Calculate(width, height, 2.5);
+        Assert(size.Width is >= 1 and <= 4096 && size.Height is >= 1 and <= 4096);
+    }
+    var normal = PdfRenderSize.Calculate(595, 842, 1);
+    Assert(Math.Abs(normal.Width / (double)normal.Height - 595d / 842d) < .002);
+    try { PdfRenderSize.Calculate(double.NaN, 10, 1); }
+    catch (ArgumentException) { return Task.CompletedTask; }
+    throw new Exception("Accepted invalid page size");
+});
+await Check("bounds streamed PDF bodies even without a Content-Length header", async () =>
+{
+    using var api = Client(_ =>
+    {
+        var content = new UnknownLengthContent(new byte[EtikaApiClient.MaxPdfBytes + 1]);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+    });
+    await Throws(413, async () => await api.PdfAsync("oversized"));
+});
+await Check("caller cancellation reaches an active API request", async () =>
+{
+    using var api = new EtikaApiClient("https://etika.example.test", new HttpClient(new CancellableHandler()));
+    using var cancelled = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+    try { await api.ContextAsync(cancelled.Token); }
+    catch (OperationCanceledException) { Assert(cancelled.IsCancellationRequested); return; }
+    throw new Exception("Ignored caller cancellation");
+});
 Console.WriteLine($"{passed} core client checks passed.");
+
+sealed class UnknownLengthContent(byte[] bytes) : HttpContent
+{
+    protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(bytes).AsTask();
+    protected override bool TryComputeLength(out long length) { length = 0; return false; }
+}
+sealed class CancellableHandler : HttpMessageHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+        return new HttpResponseMessage(HttpStatusCode.OK);
+    }
+}
 
 sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
 {

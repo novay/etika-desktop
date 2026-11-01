@@ -22,6 +22,11 @@ public sealed partial class MainWindow : Window
     private bool _preview = false;
     private int _page = 1, _lastPage = 1;
     private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _operation;
+    private Func<Task>? _retryOperation;
+    private Identity? _signedInUser;
+    private bool _preferencesReady;
+    private CancellationToken RequestToken => _operation?.Token ?? _lifetime.Token;
     private readonly HashSet<PdfWindow> _pdfWindows = [];
 
     public MainWindow()
@@ -53,7 +58,15 @@ public sealed partial class MainWindow : Window
             return;
         }
 #endif
-        ServerBox.Text = SessionStore.LoadServer();
+        var preferences = SessionStore.Preferences;
+        ThemeBox.SelectedIndex = preferences.Theme;
+        _preferencesReady = true;
+        ServerBox.Text = preferences.Server;
+#if DEBUG
+        if (Environment.GetEnvironmentVariable("ETIKA_DEV_SERVER") is { Length: > 0 } developmentServer
+            && Uri.TryCreate(developmentServer, UriKind.Absolute, out var developmentUri) && developmentUri.IsLoopback)
+            ServerBox.Text = developmentServer;
+#endif
         await RunAsync(async () =>
         {
             SetClient();
@@ -62,7 +75,7 @@ public sealed partial class MainWindow : Window
             {
                 RememberBox.IsChecked = true;
                 _api.SetToken(saved.Token);
-                await EnterWorkspaceAsync(await _api.MeAsync(_lifetime.Token));
+                await EnterWorkspaceAsync(await _api.MeAsync(RequestToken));
             }
             else await ChallengeAsync();
         });
@@ -72,7 +85,12 @@ public sealed partial class MainWindow : Window
     {
         _api?.Dispose();
         _api = new EtikaApiClient(ServerBox.Text);
-        SessionStore.SaveServer(_api.Server);
+        if (!SessionStore.SaveServer(_api.Server))
+        {
+            ErrorBar.Severity = InfoBarSeverity.Warning;
+            ErrorBar.Message = "Alamat server digunakan, tetapi belum dapat disimpan pada perangkat ini.";
+            ErrorBar.IsOpen = true;
+        }
     }
 
     private async Task ChallengeAsync()
@@ -81,7 +99,7 @@ public sealed partial class MainWindow : Window
         LoginButton.IsEnabled = false;
         CaptchaImage.Source = null;
         CaptchaBox.Text = "";
-        var challenge = await _api!.ChallengeAsync(_lifetime.Token);
+        var challenge = await _api!.ChallengeAsync(RequestToken);
         if (string.IsNullOrWhiteSpace(challenge.Key) || string.IsNullOrEmpty(challenge.Img)
             || !challenge.Img.StartsWith("data:image/", StringComparison.Ordinal) || challenge.Img.Length > 500_000)
             throw new ApiException(502, "Gambar kode verifikasi tidak valid.");
@@ -112,7 +130,7 @@ public sealed partial class MainWindow : Window
         try
         {
             result = await _api!.LoginAsync(EmailBox.Text.Trim(), PasswordBox.Password,
-                _challengeKey, CaptchaBox.Text.Trim(), Environment.MachineName, _lifetime.Token);
+                _challengeKey, CaptchaBox.Text.Trim(), Environment.MachineName, RequestToken);
         }
         catch
         {
@@ -122,13 +140,20 @@ public sealed partial class MainWindow : Window
         }
         PasswordBox.Password = "";
         SessionStore.Clear(_api!.Server);
-        if (RememberBox.IsChecked == true)
-            SessionStore.Save(_api.Server, new SavedSession(result.Token, result.ExpiresAt));
+        bool rememberFailed = RememberBox.IsChecked == true && !SessionStore.Save(_api.Server, new SavedSession(result.Token, result.ExpiresAt));
+        if (rememberFailed) RememberBox.IsChecked = false;
         await EnterWorkspaceAsync(result.User);
-    });
+        if (rememberFailed)
+        {
+            ErrorBar.Severity = InfoBarSeverity.Warning;
+            ErrorBar.Message = "Anda sudah masuk, tetapi Windows belum dapat menyimpan sesi. Masuk kembali setelah aplikasi ditutup.";
+            ErrorBar.IsOpen = true;
+        }
+    }, ReloadChallengeAsync);
 
     private async Task EnterWorkspaceAsync(Identity user)
     {
+        _signedInUser = user;
         _profile = WorkspaceProfile.ForLevel(user.Level);
         if (_profile.Documents.Count == 0) throw new ApiException(403, "Peran akun belum didukung.");
         ServerContext context;
@@ -136,7 +161,7 @@ public sealed partial class MainWindow : Window
         if (_preview) context = PreviewData.Context;
         else
 #endif
-            context = await _api!.ContextAsync(_lifetime.Token);
+            context = await _api!.ContextAsync(RequestToken);
         UserName.Text = AccountName.Text = user.Name;
         UserRole.Text = AccountRole.Text = HomeRole.Text = _profile.RoleLabel;
         AccountEmail.Text = user.Email;
@@ -155,8 +180,11 @@ public sealed partial class MainWindow : Window
         }
         Workspace.FooterMenuItems.Clear();
         Workspace.FooterMenuItems.Add(NavItem("Akun saya", "\uE77B", "account"));
-        Workspace.FooterMenuItems.Add(NavItem("Keluar", "\uE8AC", "logout"));
-        if (Workspace.SettingsItem is NavigationViewItem settings) settings.Content = "Pengaturan";
+        Workspace.FooterMenuItems.Add(NavItem("Pengaturan", "\uE713", "settings"));
+        var logout = NavItem("Keluar", "\uE89B", "logout");
+        Workspace.FooterMenuItems.Add(logout);
+        foreach (var item in Workspace.FooterMenuItems.OfType<NavigationViewItem>())
+            AutomationProperties.SetAutomationId(item, "Nav_" + item.Tag);
         HomeShortcuts.ItemsSource = _profile.Documents;
         _documentMenu = _profile.Documents[0];
         HomeCountCaption.Text = _documentMenu.Title;
@@ -211,6 +239,7 @@ public sealed partial class MainWindow : Window
                 });
                 break;
             case "account": ShowView("account"); break;
+            case "settings": ShowView("settings"); break;
             case "logout": Logout_Click(sender, new RoutedEventArgs()); break;
         }
     }
@@ -243,7 +272,10 @@ public sealed partial class MainWindow : Window
         ClearDetail();
         DocumentsList.ItemsSource = null;
         HomeCount.Text = "—";
-        DocumentsCount.Text = "";
+        DocumentsCount.Text = PageLabel.Text = "";
+        EmptyState.Visibility = Visibility.Visible;
+        EmptyStateText.Text = "Memuat dokumen…";
+        PreviousButton.IsEnabled = NextButton.IsEnabled = false;
         if (YearBox.SelectedItem is not BudgetYear year)
         {
             EmptyState.Visibility = Visibility.Visible;
@@ -257,7 +289,13 @@ public sealed partial class MainWindow : Window
         if (_preview) result = PreviewData.Documents(_profile, year.Tahun, _page, SearchBox.Text.Trim(), _documentMenu?.Status);
         else
 #endif
-            result = await _api!.DocumentsAsync(year.Tahun, _page, SearchBox.Text.Trim(), _documentMenu?.Status, _lifetime.Token);
+            result = await _api!.DocumentsAsync(year.Tahun, _page, SearchBox.Text.Trim(), _documentMenu?.Status, RequestToken);
+        if (_page > Math.Max(1, result.Meta.LastPage))
+        {
+            _page = Math.Max(1, result.Meta.LastPage);
+            await LoadDocumentsAsync();
+            return;
+        }
         DocumentsList.ItemsSource = result.Data;
         EmptyState.Visibility = result.Data.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         EmptyStateText.Text = string.IsNullOrWhiteSpace(SearchBox.Text) ? "Belum ada dokumen untuk pilihan ini." : "Tidak ada dokumen yang cocok dengan pencarian.";
@@ -290,7 +328,7 @@ public sealed partial class MainWindow : Window
             if (_preview) doc = PreviewData.Detail(selected);
             else
 #endif
-                doc = await _api!.DocumentAsync(selected.Id, _lifetime.Token);
+                doc = await _api!.DocumentAsync(selected.Id, RequestToken);
             DetailTitle.Text = doc.DisplayTitle;
             DetailSubtitle.Text = doc.DisplaySubtitle;
             DetailStatus.Text = doc.StatusLabel;
@@ -332,12 +370,19 @@ public sealed partial class MainWindow : Window
     }
     private void Theme_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (Root is not null) Root.RequestedTheme = ThemeBox.SelectedIndex switch { 1 => ElementTheme.Light, 2 => ElementTheme.Dark, _ => ElementTheme.Default };
+        if (Root is null) return;
+        Root.RequestedTheme = ThemeBox.SelectedIndex switch { 1 => ElementTheme.Light, 2 => ElementTheme.Dark, _ => ElementTheme.Default };
+        if (_preferencesReady && !_preview && !SessionStore.SaveTheme(ThemeBox.SelectedIndex))
+        {
+            ErrorBar.Severity = InfoBarSeverity.Warning;
+            ErrorBar.Message = "Tema diterapkan, tetapi pengaturannya belum dapat disimpan pada perangkat ini.";
+            ErrorBar.IsOpen = true;
+        }
     }
 
     private async void Attachment_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: string id }) return;
+        if (sender is not Button { Tag: Attachment attachment }) return;
         if (_preview)
         {
             ErrorBar.Severity = InfoBarSeverity.Informational;
@@ -347,12 +392,12 @@ public sealed partial class MainWindow : Window
         }
         await RunAsync(async () =>
         {
-            var bytes = await _api!.PdfAsync(id, _lifetime.Token);
-            var viewer = new PdfWindow();
+            var bytes = await _api!.PdfAsync(attachment.Id, RequestToken);
+            var viewer = new PdfWindow(attachment.Nama, Root.ActualTheme);
             _pdfWindows.Add(viewer);
             viewer.Closed += (_, _) => _pdfWindows.Remove(viewer);
             viewer.Activate();
-            await viewer.LoadAsync(bytes);
+            await viewer.LoadAsync(bytes, RequestToken);
         });
     }
 
@@ -373,7 +418,21 @@ public sealed partial class MainWindow : Window
     }
     private async void Refresh_Click(object sender, RoutedEventArgs e)
     {
-        if (_view is "home" or "documents") await RunAsync(LoadDocumentsAsync);
+        if (_view is not ("home" or "documents")) return;
+        await RunAsync(async () =>
+        {
+            ServerContext context;
+#if DEBUG
+            if (_preview) context = PreviewData.Context;
+            else
+#endif
+                context = await _api!.ContextAsync(RequestToken);
+            var selectedYear = (YearBox.SelectedItem as BudgetYear)?.Tahun;
+            YearBox.ItemsSource = context.Tahun;
+            YearBox.SelectedItem = context.Tahun.FirstOrDefault(x => x.Tahun == selectedYear)
+                ?? context.Tahun.FirstOrDefault(x => x.Tahun == context.TahunAktif) ?? context.Tahun.FirstOrDefault();
+            await LoadDocumentsAsync();
+        });
     }
     private async void Previous_Click(object sender, RoutedEventArgs e)
     {
@@ -406,12 +465,12 @@ public sealed partial class MainWindow : Window
         await RunAsync(async () =>
         {
             string? warning = null;
-            try { await _api!.LogoutAsync(_lifetime.Token); }
+            try { await _api!.LogoutAsync(RequestToken); }
             catch { warning = "Sesi di perangkat sudah dihapus. Pencabutan sesi di server belum berhasil."; }
             ResetSession();
             if (warning is not null) { ErrorBar.Message = warning; ErrorBar.IsOpen = true; }
             await ChallengeAsync();
-        });
+        }, ReloadChallengeAsync);
     }
 
     private void ClosePdfs()
@@ -433,40 +492,91 @@ public sealed partial class MainWindow : Window
         WelcomeTitle.Text = HomeRole.Text = HomeCount.Text = ConnectedServer.Text = "";
         _profile = WorkspaceProfile.ForLevel(null);
         _documentMenu = null;
+        _signedInUser = null;
         Workspace.Visibility = HeaderSearch.Visibility = ProfileButton.Visibility = Visibility.Collapsed;
         LoginPanel.Visibility = Visibility.Visible;
         _challengeKey = _challengeServer = null;
         LoginButton.IsEnabled = false;
         CaptchaImage.Source = null;
+        PasswordBox.Password = CaptchaBox.Text = "";
+        DocumentsCount.Text = PageLabel.Text = "";
     }
 
-    private async Task RunAsync(Func<Task> operation)
+    private async Task ReloadChallengeAsync()
     {
-        if (_busy) return;
+        SetClient();
+        await ChallengeAsync();
+    }
+    private async void Retry_Click(object sender, RoutedEventArgs e)
+    {
+        if (_retryOperation is { } retry) await RunAsync(retry);
+    }
+    private void Cancel_Click(object sender, RoutedEventArgs e) => _operation?.Cancel();
+    private void Server_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (LoginButton is null) return;
+        _challengeKey = _challengeServer = null;
+        LoginButton.IsEnabled = false;
+        CaptchaImage.Source = null;
+        CaptchaBox.Text = "";
+    }
+    private void Login_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter && !_busy && LoginButton.IsEnabled)
+        {
+            e.Handled = true;
+            Login_Click(sender, e);
+        }
+    }
+    private async Task RunAsync(Func<Task> operation, Func<Task>? retry = null)
+    {
+        if (_busy || _lifetime.IsCancellationRequested) return;
         _busy = true;
+        _retryOperation = null;
+        ErrorRetryButton.Visibility = Visibility.Collapsed;
         ErrorBar.IsOpen = false;
         ErrorBar.Severity = InfoBarSeverity.Error;
+        _operation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         LoginPanel.IsEnabled = Workspace.IsEnabled = SearchBox.IsEnabled = SearchSubmitButton.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = false;
         BusyBar.Visibility = Visibility.Visible;
         try { await operation(); }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            if (ex is ApiException { StatusCode: 401 or 403 }) ResetSession();
+            bool cancelled = ex is OperationCanceledException && _operation.IsCancellationRequested;
+            bool retryable = ex is HttpRequestException or OperationCanceledException || ex is ApiException { StatusCode: >= 500 };
+            if (retryable) _retryOperation = retry ?? operation;
+            if (retryable && _api?.HasToken == true && LoginPanel.Visibility == Visibility.Visible && _signedInUser is { } user)
+                _retryOperation = () => EnterWorkspaceAsync(user);
+            if (ex is ApiException { StatusCode: 401 or 403 })
+            {
+                ResetSession();
+                _retryOperation = ReloadChallengeAsync;
+                try { await ChallengeAsync(); _retryOperation = null; } catch { /* sign-in remains available for a manual retry */ }
+            }
+            if (DocumentsList.ItemsSource is null) EmptyStateText.Text = "Dokumen belum berhasil dimuat. Silakan coba lagi.";
+            ErrorBar.Severity = cancelled ? InfoBarSeverity.Informational : InfoBarSeverity.Error;
             ErrorBar.Message = ex switch
             {
-                HttpRequestException => "Server belum dapat dihubungi. Periksa koneksi dan alamat server.",
-                OperationCanceledException => "Permintaan terlalu lama. Silakan coba kembali.",
+                HttpRequestException => "Server belum dapat dihubungi. Periksa koneksi dan alamat server, lalu coba lagi.",
+                OperationCanceledException when cancelled => "Permintaan dibatalkan. Anda dapat mencoba kembali.",
+                OperationCanceledException => "Server terlalu lama merespons. Silakan coba kembali.",
                 ApiException or ArgumentException => ex.Message,
                 _ => "Operasi belum berhasil. Silakan coba kembali."
             };
+            ErrorRetryButton.Visibility = _retryOperation is null ? Visibility.Collapsed : Visibility.Visible;
             ErrorBar.IsOpen = true;
         }
         finally
         {
+            _operation.Dispose();
+            _operation = null;
             _busy = false;
-            LoginPanel.IsEnabled = Workspace.IsEnabled = SearchBox.IsEnabled = SearchSubmitButton.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = true;
-            BusyBar.Visibility = Visibility.Collapsed;
+            if (!_lifetime.IsCancellationRequested)
+            {
+                LoginPanel.IsEnabled = Workspace.IsEnabled = SearchBox.IsEnabled = SearchSubmitButton.IsEnabled = ProfileButton.IsEnabled = PreviewRoleBox.IsEnabled = true;
+                BusyBar.Visibility = Visibility.Collapsed;
+            }
         }
     }
 

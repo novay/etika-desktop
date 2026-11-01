@@ -10,6 +10,13 @@
       "environmentVariables": {
         "ETIKA_UI_PREVIEW": "Admin"
       }
+    },
+    "ETIKA Local API": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": {
+        "ETIKA_DEV_SERVER": "http://127.0.0.1:8000"
+      }
     }
   }
 }

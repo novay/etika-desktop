@@ -32,7 +32,7 @@ public sealed class EtikaApiClient : IDisposable
         _base = new Uri(uri, uri.AbsolutePath.EndsWith("/api/v1/", StringComparison.Ordinal)
             ? "./" : "api/v1/");
         _http = http ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
-        _http.Timeout = TimeSpan.FromSeconds(60);
+        _http.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public void SetToken(string? token) => _token = token;
@@ -111,7 +111,7 @@ public sealed class EtikaApiClient : IDisposable
     private async Task<T> JsonAsync<T>(HttpMethod method, string path, object? body, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(60));
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
         ct = timeout.Token;
         using var response = await SendAsync(method, path, body, ct);
         if (response.Content.Headers.ContentType?.MediaType != "application/json")
@@ -145,11 +145,16 @@ public sealed class EtikaApiClient : IDisposable
                 401 => "Sesi berakhir. Silakan masuk kembali.",
                 403 => "Akun atau hak akses tidak mengizinkan tindakan ini.",
                 404 => "Data tidak ditemukan atau API desktop belum diaktifkan.",
+                409 => "Data berubah atau konteks tahun belum tersedia. Muat ulang untuk mencoba kembali.",
+                413 => "Ukuran respons atau lampiran melebihi batas yang didukung.",
+                415 => "Server tidak mengirim berkas PDF yang valid.",
                 429 => "Terlalu banyak permintaan. Coba kembali nanti.",
+                >= 500 => "Layanan ETIKA sedang mengalami gangguan. Silakan coba kembali.",
                 >= 300 and < 400 => "Server mengalihkan permintaan. Periksa alamat API.",
                 _ => "Permintaan ke server belum berhasil."
             };
-            if (response.Content.Headers.ContentType?.MediaType == "application/json")
+            if ((int)response.StatusCode is >= 400 and < 500
+                && response.Content.Headers.ContentType?.MediaType == "application/json")
             {
                 var bytes = await ReadBoundedAsync(response.Content, 64 * 1024, ct);
                 try

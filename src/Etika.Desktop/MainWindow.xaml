@@ -31,7 +31,9 @@
                 </Button>
             </TitleBar.RightHeader>
         </TitleBar>
-        <InfoBar x:Name="ErrorBar" Grid.Row="1" IsOpen="False" Severity="Error" Margin="24,4,24,8" />
+        <InfoBar x:Name="ErrorBar" Grid.Row="1" IsOpen="False" Severity="Error" Margin="24,4,24,8">
+            <InfoBar.ActionButton><Button x:Name="ErrorRetryButton" Content="Coba lagi" Click="Retry_Click" Visibility="Collapsed" /></InfoBar.ActionButton>
+        </InfoBar>
         <Border x:Name="PreviewStrip" Grid.Row="2" Visibility="Collapsed" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 Padding="24,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
@@ -67,16 +69,16 @@
                             <TextBlock Text="Selamat datang" FontSize="28" FontWeight="SemiBold" />
                             <TextBlock Text="Masuk menggunakan akun ETIKA Anda." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         </StackPanel>
-                        <TextBox x:Name="ServerBox" Header="Server ETIKA" MaxLength="500" Text="https://etika.kukarkab.com" />
+                        <TextBox x:Name="ServerBox" Header="Server ETIKA" MaxLength="500" Text="https://etika.kukarkab.com" TextChanged="Server_Changed" />
                         <TextBox x:Name="EmailBox" Header="Email" MaxLength="255" PlaceholderText="nama@instansi.go.id" />
-                        <PasswordBox x:Name="PasswordBox" Header="Kata sandi" MaxLength="1024" />
+                        <PasswordBox x:Name="PasswordBox" Header="Kata sandi" MaxLength="1024" KeyDown="Login_KeyDown" />
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                             <Border CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" MinHeight="60">
                                 <Image x:Name="CaptchaImage" Height="60" Stretch="Uniform" AutomationProperties.Name="Gambar kode verifikasi" />
                             </Border>
                             <Button Grid.Column="1" Content="Ganti kode" Click="Challenge_Click" VerticalAlignment="Center" />
                         </Grid>
-                        <TextBox x:Name="CaptchaBox" Header="Kode verifikasi" MaxLength="30" PlaceholderText="Masukkan kode di atas" />
+                        <TextBox x:Name="CaptchaBox" Header="Kode verifikasi" MaxLength="30" KeyDown="Login_KeyDown" PlaceholderText="Masukkan kode di atas" />
                         <CheckBox x:Name="RememberBox" Content="Ingat sesi di perangkat ini" />
                         <Button x:Name="LoginButton" Content="Masuk" Click="Login_Click" IsEnabled="False"
                                 Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" />
@@ -86,7 +88,7 @@
         </ScrollViewer>
         <NavigationView x:Name="Workspace" Grid.Row="3" Visibility="Collapsed" AutomationProperties.AutomationId="WorkspaceNavigation"
                         PaneDisplayMode="Auto" OpenPaneLength="248" CompactPaneLength="56" IsPaneOpen="True"
-                        IsBackButtonVisible="Collapsed" IsTitleBarAutoPaddingEnabled="False" SelectionChanged="Navigation_SelectionChanged">
+                        IsBackButtonVisible="Collapsed" IsSettingsVisible="False" IsTitleBarAutoPaddingEnabled="False" SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.PaneFooter>
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="16,16,12,20">
                     <PersonPicture x:Name="SidebarAvatar" Width="36" Height="36" />
@@ -103,7 +105,7 @@
                         <TextBlock x:Name="PageDescription" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" MaxWidth="700" HorizontalAlignment="Left" />
                     </StackPanel>
                     <ComboBox x:Name="YearBox" Grid.Column="1" Width="144" Header="Tahun anggaran" DisplayMemberPath="Tahun" SelectionChanged="Year_Changed" />
-                    <Button Grid.Column="2" VerticalAlignment="Bottom" Click="Refresh_Click" ToolTipService.ToolTip="Muat ulang dokumen" AutomationProperties.Name="Muat ulang dokumen">
+                    <Button x:Name="ReloadButton" Grid.Column="2" VerticalAlignment="Bottom" Click="Refresh_Click" ToolTipService.ToolTip="Muat ulang dokumen" AutomationProperties.Name="Muat ulang dokumen">
                         <FontIcon Glyph="&#xE72C;" FontSize="16" />
                     </Button>
                 </Grid>
@@ -215,7 +217,7 @@
                                         <ItemsControl x:Name="AttachmentsList">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="core:Attachment">
-                                                    <Button Tag="{x:Bind Id}" Click="Attachment_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12" Margin="0,0,0,8">
+                                                    <Button Tag="{x:Bind}" AutomationProperties.AutomationId="{x:Bind Id}" Click="Attachment_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12" Margin="0,0,0,8">
                                                         <Grid ColumnDefinitions="24,*,16" ColumnSpacing="10">
                                                             <FontIcon Glyph="&#xEA90;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
                                                             <TextBlock Grid.Column="1" Text="{x:Bind Nama}" TextWrapping="Wrap" />
@@ -269,6 +271,12 @@
                 </ScrollViewer>
             </Grid>
         </NavigationView>
-        <ProgressBar x:Name="BusyBar" Grid.Row="4" IsIndeterminate="True" Visibility="Collapsed" />
+        <StackPanel x:Name="BusyBar" Grid.Row="4" Visibility="Collapsed" Background="{ThemeResource LayerFillColorDefaultBrush}">
+            <Grid Padding="24,8" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Memuat data…" VerticalAlignment="Center" />
+                <Button x:Name="CancelRequestButton" Grid.Column="1" Content="Batalkan" Click="Cancel_Click" />
+            </Grid>
+            <ProgressBar IsIndeterminate="True" />
+        </StackPanel>
     </Grid>
 </Window>

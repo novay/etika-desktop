@@ -1,24 +1,33 @@
-<Window
-    x:Class="Etika.Desktop.PdfWindow"
+<Window x:Class="Etika.Desktop.PdfWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Lampiran — ETIKA">
-    <Grid RowDefinitions="Auto,Auto,*" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <ContentControl x:Name="Toolbar" HorizontalContentAlignment="Stretch">
-        <StackPanel Orientation="Horizontal" Spacing="12" Margin="20,12">
-            <Button Content="Sebelumnya" Click="Previous_Click" />
-            <TextBlock x:Name="PageText" VerticalAlignment="Center" MinWidth="100" Text="Membuka PDF..." />
-            <Button Content="Berikutnya" Click="Next_Click" />
-            <Button Content="−" Click="ZoomOut_Click" AutomationProperties.Name="Perkecil PDF" />
-            <Button Content="+" Click="ZoomIn_Click" AutomationProperties.Name="Perbesar PDF" />
-            <TextBlock x:Name="ZoomText" VerticalAlignment="Center" />
-        </StackPanel>
-        </ContentControl>
-        <InfoBar x:Name="PdfError" Grid.Row="1" Severity="Error" IsOpen="False" />
-        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Lampiran PDF — ETIKA">
+    <Grid x:Name="PdfRoot" RowDefinitions="Auto,Auto,Auto,*">
+        <Grid Padding="24,16" RowDefinitions="Auto,Auto" RowSpacing="12">
+            <TextBlock x:Name="FileTitle" Text="Lampiran PDF" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <ContentControl x:Name="Toolbar" Grid.Row="1" HorizontalContentAlignment="Stretch" IsEnabled="False">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="PdfPreviousButton" Click="Previous_Click" AutomationProperties.Name="Halaman sebelumnya"><FontIcon Glyph="&#xE76B;" FontSize="14" /></Button>
+                        <NumberBox x:Name="PageNumberBox" Width="100" Minimum="1" Value="1" SpinButtonPlacementMode="Compact" ValueChanged="PageNumber_ValueChanged" AutomationProperties.Name="Nomor halaman" />
+                        <Button x:Name="PdfNextButton" Click="Next_Click" AutomationProperties.Name="Halaman berikutnya"><FontIcon Glyph="&#xE76C;" FontSize="14" /></Button>
+                    </StackPanel>
+                    <TextBlock x:Name="PageText" Grid.Column="1" Text="Membuka PDF…" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="PdfZoomOutButton" Content="−" Click="ZoomOut_Click" AutomationProperties.Name="Perkecil PDF" />
+                        <Button x:Name="PdfResetZoomButton" Click="ResetZoom_Click" ToolTipService.ToolTip="Kembalikan ukuran 100%"><TextBlock x:Name="ZoomText" Text="100%" MinWidth="44" TextAlignment="Center" /></Button>
+                        <Button x:Name="PdfZoomInButton" Content="+" Click="ZoomIn_Click" AutomationProperties.Name="Perbesar PDF" />
+                    </StackPanel>
+                </Grid>
+            </ContentControl>
+        </Grid>
+        <ProgressBar x:Name="PdfBusy" Grid.Row="1" IsIndeterminate="True" Visibility="Collapsed" />
+        <InfoBar x:Name="PdfError" Grid.Row="2" Severity="Error" IsOpen="False" Margin="24,8" />
+        <ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" Padding="24"
                       Background="{ThemeResource SolidBackgroundFillColorSecondaryBrush}">
-            <Image x:Name="PageImage" HorizontalAlignment="Center" VerticalAlignment="Top" Stretch="Uniform" />
+            <Border x:Name="Paper" Background="White" HorizontalAlignment="Center" VerticalAlignment="Top" Visibility="Collapsed">
+                <Image x:Name="PageImage" Stretch="Uniform" />
+            </Border>
         </ScrollViewer>
     </Grid>
 </Window>

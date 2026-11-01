@@ -79,3 +79,14 @@ Mode pratinjau diaktifkan melalui ETIKA_UI_PREVIEW pada launchSettings.json dan 
 Referensi Hot Reload:
 - https://learn.microsoft.com/en-us/windows/apps/develop/ui/xaml-runtime-design-tools
 - https://learn.microsoft.com/en-us/visualstudio/debugger/hot-reload
+
+
+## Pemeriksaan cepat Fase 2
+
+Dari PowerShell pada root repository, jalankan `./scripts/Check-DevEnvironment.ps1`. Pemeriksaan ini menemukan SDK, instalasi Visual Studio, dan platform Windows; workload WinUI tetap perlu dipastikan melalui Installer.
+
+Untuk API Laravel pada PC Windows yang sama, pilih profil **ETIKA Local API**. URL development ada pada Properties/launchSettings.json melalui ETIKA_DEV_SERVER; hanya alamat loopback diterima pada override Debug ini. Untuk server lain, gunakan kolom Server ETIKA dengan URL HTTPS yang dapat diakses Windows. Preferensi server yang tersimpan mengalahkan teks default pada XAML; alamat bawaan tunggal berada di Etika.Core/DesktopPreferences.cs.
+
+Uji Hot Reload: jalankan profil UI Preview dengan F5, buka dokumen contoh, ubah Padding pada style EtikaCardStyle, lalu simpan. Periksa perubahan tanpa memulai proses baru. Bila IDE meminta restart untuk perubahan struktural, jalankan ulang F5. Catat versi Visual Studio dan hasilnya pada daftar penerimaan Fase 2.
+
+Tema serta alamat server disimpan pada settings.json lokal. Token hanya disimpan melalui Windows Credential Locker jika Ingat sesi dipilih; kegagalan penyimpanan ditampilkan sebagai peringatan.

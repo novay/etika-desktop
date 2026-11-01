@@ -19,7 +19,7 @@ Pengujian klien mencakup pembatasan respons PDF yang dikirim tanpa Content-Lengt
 
 scripts/Test-ApiIntegration.ps1 menjalankan aplikasi Debug dengan server HTTP sintetis yang hanya mendengarkan pada 127.0.0.1. Data PDF, akun, CAPTCHA, serta dokumen adalah fixture pengujian. Pemeriksaan ini menguji klien Windows dan protokol HTTP, bukan implementasi Laravel atau database produksi.
 
-Cakupan target: login salah/benar, CAPTCHA baru, peran, pencarian, paginasi, tahun, data kosong, perubahan server yang dibaca ulang, pembatalan, retry, tema, sesi, rendering PDF dua halaman, zoom, PDF rusak/terkunci/hilang/berukuran besar, serta pembersihan saat logout. Hasil eksekusi terakhir dicatat di VALIDATION.md.
+Cakupan target: login salah/benar, CAPTCHA baru, peran, pencarian, paginasi, tahun, data kosong, perubahan server yang dibaca ulang, pembatalan, retry, tema, sesi, rendering PDF dua halaman, zoom, PDF rusak/terkunci/hilang/berukuran besar, serta pembersihan saat logout. Eksekusi terakhir lulus seluruh cakupan tersebut, termasuk pemulihan Credential Locker setelah restart. Hasil lengkap dan batas pengujian dicatat di VALIDATION.md.
 
 Variabel ETIKA_DEV_SERVER (hanya alamat loopback), ETIKA_TEST_DATA_DIR, dan ETIKA_UI_PREVIEW dibaca pada build Debug. Build Release mengabaikannya. Fixture tidak ikut dipublikasikan dalam folder aplikasi.
 
@@ -35,4 +35,4 @@ Variabel ETIKA_DEV_SERVER (hanya alamat loopback), ETIKA_TEST_DATA_DIR, dan ETIK
 | Skala layar 100%, 125%, 150%, keyboard, jendela sempit/lebar | Perangkat Windows tujuan | Menunggu UAT |
 | Windows ARM64 bila digunakan | Windows ARM dan toolchain sesuai | Menunggu uji perangkat |
 
-Implementasi fase ini dapat ditinjau dan diuji. Penutupan penerimaan Fase 2 memerlukan hasil UAT di atas, terutama sebelum menambahkan operasi pengajuan/tulis pada Fase 3. Daftar langkah rinci tersedia pada WINDOWS_ACCEPTANCE.md.
+Implementasi fase ini dapat ditinjau dan diuji. Penutupan penerimaan Fase 2 memerlukan hasil UAT di atas, terutama sebelum menambahkan operasi pengajuan/tulis pada Fase 3. Daftar langkah rinci tersedia pada WINDOWS_ACCEPTANCE.md, dengan matriks pencatatan hasil pada PHASE2_UAT.md.

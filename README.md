@@ -2,13 +2,13 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Status v0.2.0: build Release/Debug x64, startup, 20 pemeriksaan klien, navigasi enam kombinasi peran, dan penguncian pratinjau pada Release lulus di Windows. Panduan [desain/menu](docs/UI_WORKSPACE.md) dan [F5 + XAML Hot Reload](docs/DEVELOPMENT_WINDOWS.md). Hot Reload interaktif, integrasi staging, dan pengujian perangkat ARM64 masih perlu dilakukan pada lingkungan tujuan.
+Status v0.2.1 / Fase 2: build Release/Debug x64, 26 pemeriksaan klien, menu enam kombinasi peran, dan alur login/dokumen/PDF melalui server HTTP sintetis lulus di Windows. Ringkasan [Fase 2](docs/PHASE2.md), [hasil validasi](docs/VALIDATION.md), dan [matriks UAT](docs/PHASE2_UAT.md). Hot Reload interaktif, akun/data sebenarnya, DPI, dan perangkat ARM64 masih perlu diuji pada lingkungan tujuan.
 
 ## Unduh aplikasi Windows x64
 
-[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41325353505/artifacts/13090398862) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41325353505).
+[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41330719597/artifacts/13093375660) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41330719597).
 
-Ekstrak ZIP v0.2.0 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
+Ekstrak ZIP v0.2.1 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
 
 Login memerlukan API desktop yang sudah diterapkan dan diaktifkan pada server tujuan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 
@@ -76,3 +76,10 @@ Rincian kontrak terdapat di docs/API_CONTRACT.md. Validasi akhir Windows dan int
 Desktop mengambil kode verifikasi dari GET /api/v1/auth/challenge. Server harus menyediakan API desktop pada [backend ETIKA](https://github.com/novay/etika.kukarkab.com/pull/1), dengan konfigurasi ETIKA_DESKTOP_API_ENABLED=true dan cache route/config yang sesuai. Menghubungkan repository desktop saja belum memasang endpoint ini pada server web.
 
 HTTP 404 pada layanan challenge/login ditampilkan sebagai pesan bahwa layanan login desktop belum tersedia. Tombol Masuk baru aktif setelah gambar CAPTCHA dan key berhasil dimuat. Kredensial tidak dikirim bila kode verifikasi belum siap. Setelah backend siap, klik Ganti kode untuk mencoba kembali.
+
+
+## Mulai pengembangan Fase 2
+
+Di Windows, jalankan `./scripts/Check-DevEnvironment.ps1`, lalu buka Etika.Desktop.sln pada Visual Studio. Gunakan Debug dan profil ETIKA UI Preview untuk desain dengan data contoh; F5 + XAML Hot Reload memungkinkan perubahan XAML diperiksa pada proses yang sedang berjalan. Profil ETIKA Local API menggunakan http://127.0.0.1:8000 pada Windows yang sama. Profil normal digunakan untuk akun dan server ETIKA sebenarnya.
+
+Lihat [panduan development](docs/DEVELOPMENT_WINDOWS.md). Uji otomatis lengkap dapat dijalankan melalui workflow Windows. Server fixture pada scripts/fixtures hanya untuk pengujian dan tidak ikut dalam paket publish.

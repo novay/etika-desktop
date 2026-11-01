@@ -24,3 +24,6 @@ Untuk workspace v0.2.0:
 - Jalankan profil normal kembali untuk login dan PDF sungguhan. Mode pratinjau memakai data sintetis dan tidak menggantikan pengujian otorisasi di server.
 
 Tahap berikutnya sesudah penerimaan alur baca adalah pengajuan dan unggahan, diikuti catatan pemeriksaan serta anotasi PDF. Aturan tulis dan status akan berada pada backend bersama.
+
+
+Fase 2 v0.2.1 sudah memiliki pemeriksaan klien dan fixture Windows otomatis. Pengujian perangkat serta backend sebenarnya tetap perlu dicatat pada [PHASE2_UAT.md](PHASE2_UAT.md); ringkasan hasil otomatis ada di [VALIDATION.md](VALIDATION.md).

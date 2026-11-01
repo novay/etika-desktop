@@ -23,7 +23,7 @@
                 </StackPanel>
                 <TextBox x:Name="CaptchaBox" Header="Kode verifikasi" MaxLength="30" />
                 <CheckBox x:Name="RememberBox" Content="Ingat sesi di perangkat ini" />
-                <Button x:Name="LoginButton" Content="Masuk" Click="Login_Click"
+                <Button x:Name="LoginButton" Content="Masuk" Click="Login_Click" IsEnabled="False"
                         Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" />
                 <TextBlock Text="Gunakan akun yang sama dengan ETIKA web." TextWrapping="Wrap"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

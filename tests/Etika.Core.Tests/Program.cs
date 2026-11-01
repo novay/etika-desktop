@@ -159,6 +159,17 @@ await Check("restores canonical root for subdirectory deployments", () =>
     Assert(nested.Server == "https://example.test/etika");
     return Task.CompletedTask;
 });
+await Check("does not transmit credentials before a verification challenge is ready", async () =>
+{
+    bool called = false;
+    using var api = Client(_ =>
+    {
+        called = true;
+        return Json("{}");
+    });
+    await Throws(422, async () => await api.LoginAsync("user@example.test", "password", "", "", "PC"));
+    Assert(!called && !api.HasToken);
+});
 Console.WriteLine($"{passed} core client checks passed.");
 
 sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

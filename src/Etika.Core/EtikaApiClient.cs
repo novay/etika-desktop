@@ -45,6 +45,8 @@ public sealed class EtikaApiClient : IDisposable
         string captcha, string deviceName, CancellationToken ct = default)
     {
         ClearToken();
+        if (string.IsNullOrWhiteSpace(captchaKey) || string.IsNullOrWhiteSpace(captcha))
+            throw new ApiException(422, "Muat dan isi kode verifikasi sebelum masuk.");
         var result = await DataAsync<LoginResult>(HttpMethod.Post, "auth/login", new
         {
             email, password, captcha_key = captchaKey, captcha, device_name = deviceName
@@ -127,6 +129,10 @@ public sealed class EtikaApiClient : IDisposable
         try
         {
             if (response.StatusCode == HttpStatusCode.Unauthorized) ClearToken();
+            if (response.StatusCode == HttpStatusCode.NotFound
+                && path is "auth/challenge" or "auth/login")
+                throw new ApiException(404,
+                    "Layanan login desktop belum tersedia pada server ini. Periksa alamat server atau hubungi pengelola ETIKA.");
             string message = (int) response.StatusCode switch
             {
                 401 => "Sesi berakhir. Silakan masuk kembali.",

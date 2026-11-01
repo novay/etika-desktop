@@ -61,9 +61,12 @@ public sealed partial class MainWindow : Window
     {
         _challengeKey = null;
         _challengeServer = null;
+        LoginButton.IsEnabled = false;
+        CaptchaImage.Source = null;
         CaptchaBox.Text = "";
         var challenge = await _api!.ChallengeAsync(_lifetime.Token);
-        if (!challenge.Img.StartsWith("data:image/", StringComparison.Ordinal)
+        if (string.IsNullOrWhiteSpace(challenge.Key) || string.IsNullOrEmpty(challenge.Img)
+            || !challenge.Img.StartsWith("data:image/", StringComparison.Ordinal)
             || challenge.Img.Length > 500_000)
             throw new ApiException(502, "Gambar kode verifikasi tidak valid.");
         var comma = challenge.Img.IndexOf(',');
@@ -72,6 +75,7 @@ public sealed partial class MainWindow : Window
         CaptchaImage.Source = await BitmapAsync(bytes);
         _challengeKey = challenge.Key;
         _challengeServer = _api.Server;
+        LoginButton.IsEnabled = true;
     }
 
     private async void Challenge_Click(object sender, RoutedEventArgs e) => await RunAsync(async () =>
@@ -245,6 +249,7 @@ public sealed partial class MainWindow : Window
         Workspace.Visibility = Visibility.Collapsed;
         LoginPanel.Visibility = Visibility.Visible;
         _challengeKey = null;
+        LoginButton.IsEnabled = false;
         CaptchaImage.Source = null;
     }
 

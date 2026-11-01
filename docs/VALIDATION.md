@@ -6,12 +6,13 @@ Tanggal: 1 November 2026. Baseline backend: e265090ce54c912abbb169a8b7789309df2c
 | --- | --- |
 | API Laravel 10.49.1, PHP 8.3.6, SQLite sintetis | 15 tes / 83 assertions lulus |
 | Workflow API di GitHub Actions | Lulus: https://github.com/novay/etika.kukarkab.com/actions/runs/41277406920 |
-| Klien C# pada .NET SDK 10.0.403 Linux | 15 pemeriksaan lulus |
+| Klien C# | 15 pemeriksaan lulus di Linux dan runner Windows |
 | Kompilasi Etika.Core | Lulus |
 | Pemeriksaan semantik C# UI terhadap referensi WinUI | Lulus dengan stub sementara untuk field yang biasanya dihasilkan XAML |
 | XML/XAML dan nama event handler | Struktur terbaca, semua handler yang dirujuk tersedia |
 | Pemulihan dependensi proyek WinUI | Lulus |
-| Build penuh WinUI | Belum selesai: compiler XAML/MakePRI Windows tidak dapat dijalankan di Linux |
+| Build penuh WinUI | Lulus pada runner Windows x64: https://github.com/novay/etika-desktop/actions/runs/41277728059 |
+| Artifact publish Windows x64 | Tersedia: https://github.com/novay/etika-desktop/actions/runs/41277728059/artifacts/13071587759 |
 | Menjalankan UI dan render PDF di Windows | Belum dilakukan |
 | Integrasi server ETIKA produksi/staging | Belum dilakukan |
 | Regression test seluruh web existing / MySQL | Belum dilakukan |
@@ -24,6 +25,6 @@ Cakupan klien: server HTTP tidak sah, normalisasi URL API/subdirektori, encoding
 
 Satu peringatan libpng pada gambar latar CAPTCHA bawaan dependency muncul ketika pengujian challenge; tes tetap lulus.
 
-Workflow Windows disediakan dalam source. Build tersebut perlu dijalankan pada repository desktop setelah source di-push. Paket ini merupakan source, belum installer atau binary Windows yang tervalidasi.
+Workflow Windows telah dijalankan untuk commit c6c58f951c86fa6990a5138363041397760bd7da dan berhasil menghasilkan paket publish x64. Build Linux sebelumnya berhenti pada tool XAML/MakePRI khusus Windows; hambatan kompilasi tersebut sudah diselesaikan melalui runner Windows. Pengujian tampilan interaktif, render PDF, dan koneksi staging tetap belum dilakukan. Installer dan penandatanganan belum tersedia.
 
 Backend review: https://github.com/novay/etika.kukarkab.com/pull/1

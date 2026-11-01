@@ -2,7 +2,15 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Status: implementasi alur baca awal. Klien API dan API Laravel sudah diuji. Build XAML, paket Windows, dan pengujian UI pada Windows masih perlu dijalankan.
+Status: implementasi alur baca awal. Build Windows x64 (termasuk XAML) dan 15 pengujian klien berhasil di GitHub Actions. Pengujian UI interaktif dan integrasi staging masih perlu dilakukan.
+
+## Unduh aplikasi Windows x64
+
+[Paket hasil build Windows x64](https://github.com/novay/etika-desktop/actions/runs/41277728059/artifacts/13071587759) — sekitar 86 MiB. [Log build dan pengujian](https://github.com/novay/etika-desktop/actions/runs/41277728059).
+
+Ekstrak seluruh ZIP ke satu folder, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
+
+Aplikasi belum dapat login ke server produksi sebelum API desktop diterapkan dan diaktifkan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 
 ## Fitur source yang tersedia
 

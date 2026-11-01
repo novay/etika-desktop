@@ -182,9 +182,12 @@ try {
         $pdf = Open-Pdf $case[0] $case[1]
         [void](Ready-Id 'PdfError' $pdf); Close-Pdf $pdf
     }
+    # The attachment section scrolls on smaller Windows runner displays.
+    (Ready-Id 'DetailScroll').GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern).SetScrollPercent(-1,100)
     Invoke-Id 'missing'; Expect-Text 'Berkas belum tersedia.'
     Invoke-Id 'html'; Expect-Text 'Server tidak mengirim berkas PDF.'
     Invoke-Id 'large'; Expect-Text 'Ukuran PDF melebihi 25 MB.'
+    (Ready-Id 'DetailScroll').GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern).SetScrollPercent(-1,0)
     $pdf = Open-Pdf 'valid' 'PDF uji dua halaman'; Expect-Text 'Halaman 1 dari 2' $pdf
     Select-Menu 'logout'; [void](Ready-Id 'LoginButton')
     [void](Wait-For { $null -eq (Find-Pdf 'PDF uji dua halaman') } 'logout closes PDF windows')

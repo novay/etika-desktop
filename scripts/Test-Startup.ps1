@@ -23,7 +23,10 @@ try {
         if ($process.HasExited) {
             throw ("ETIKA exited during startup. Exit code: {0} (0x{1:X8})" -f $process.ExitCode, $process.ExitCode)
         }
-        if ($process.MainWindowHandle -ne 0) { $hasWindow = $true; break }
+        if ($process.MainWindowHandle -ne 0 -and $process.MainWindowTitle -eq "ETIKA Desktop") {
+            $hasWindow = $true
+            break
+        }
     }
     if (!$hasWindow) { throw "Process started but no main window appeared within 15 seconds." }
     Start-Sleep -Seconds 3
@@ -32,6 +35,8 @@ try {
     Write-Host "PASS: ETIKA main window opened and remained running."
 }
 finally {
+    $appLog = Join-Path $env:LOCALAPPDATA "ETIKA/Desktop/Logs/startup.log"
+    if (Test-Path $appLog) { Copy-Item $appLog (Join-Path $diagnostics.FullName "startup.log") }
     Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = $started } -ErrorAction SilentlyContinue |
         Where-Object { $_.Message -match 'Etika.Desktop' } |
         Format-List TimeCreated, ProviderName, Id, Message |

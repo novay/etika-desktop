@@ -32,7 +32,7 @@ public sealed class EtikaApiClient : IDisposable
         _base = new Uri(uri, uri.AbsolutePath.EndsWith("/api/v1/", StringComparison.Ordinal)
             ? "./" : "api/v1/");
         _http = http ?? new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
-        _http.Timeout = TimeSpan.FromSeconds(30);
+        _http.Timeout = TimeSpan.FromMinutes(2);
     }
 
     public void SetToken(string? token) => _token = token;
@@ -104,7 +104,9 @@ public sealed class EtikaApiClient : IDisposable
         {
             if (HasToken)
             {
-                using var response = await SendAsync(HttpMethod.Post, "auth/logout", null, ct);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                timeout.CancelAfter(TimeSpan.FromSeconds(30));
+                using var response = await SendAsync(HttpMethod.Post, "auth/logout", null, timeout.Token);
             }
         }
         finally { ClearToken(); }
@@ -134,7 +136,7 @@ public sealed class EtikaApiClient : IDisposable
     private async Task<T> JsonAsync<T>(HttpMethod method, string path, object? body, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        timeout.CancelAfter(body is HttpContent ? TimeSpan.FromMinutes(2) : TimeSpan.FromSeconds(30));
         ct = timeout.Token;
         using var response = await SendAsync(method, path, body, ct);
         if (response.Content.Headers.ContentType?.MediaType != "application/json")

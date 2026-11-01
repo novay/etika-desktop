@@ -8,7 +8,7 @@
    <TextBlock x:Name="ContextText" TextWrapping="Wrap" />
   </StackPanel>
   <InfoBar x:Name="MessageBar" Grid.Row="1" IsOpen="False" Severity="Error" IsClosable="True" />
-  <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+  <ScrollViewer x:Name="SubmissionScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto">
    <StackPanel x:Name="FormPanel" Spacing="16">
     <StackPanel x:Name="SubPicker" Spacing="8">
      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">

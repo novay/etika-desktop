@@ -110,16 +110,93 @@ function Scroll-Attachments {
     if ($scroll.Current.VerticallyScrollable) { $scroll.SetScrollPercent(-1,100) }
 }
 function Close-Pdf($window) { $window.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close() }
-function Save-Window([string]$name) {
+function Save-Window([string]$name, $handle = $process.MainWindowHandle) {
     $rect = [EtikaIntegrationWindow+Rect]::new()
-    [void][EtikaIntegrationWindow]::GetWindowRect($process.MainWindowHandle, [ref]$rect)
+    [void][EtikaIntegrationWindow]::GetWindowRect($handle, [ref]$rect)
     $bitmap = [System.Drawing.Bitmap]::new($rect.Right-$rect.Left,$rect.Bottom-$rect.Top)
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap); $dc=$graphics.GetHdc()
-    try { [void][EtikaIntegrationWindow]::PrintWindow($process.MainWindowHandle,$dc,2) }
+    try { [void][EtikaIntegrationWindow]::PrintWindow($handle,$dc,2) }
     finally { $graphics.ReleaseHdc($dc) }
     try { $bitmap.Save((Join-Path $diagnostics ($name+'.png')),[System.Drawing.Imaging.ImageFormat]::Png) }
     finally { $graphics.Dispose(); $bitmap.Dispose() }
 }
+function Find-Submission {
+    return [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,
+        [System.Windows.Automation.AndCondition]::new(
+            [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id),
+            [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty, 'Pengajuan SKPD — ETIKA')))
+}
+function Scroll-Submission($window, [double]$percent) {
+    $scroll = Find-Id $window 'SubmissionScroll'
+    if ($null -ne $scroll) {
+        $pattern = $scroll.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+        if ($pattern.Current.VerticallyScrollable) { $pattern.SetScrollPercent(-1,$percent) }
+    }
+}
+function Confirm-Submission($window) {
+    $button = Wait-For { $e = Find-Name $window 'Kirim'; if ((Visible $e) -and $e.Current.IsEnabled) { $e } } 'confirmation send'
+    $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+}
+function Test-Submissions {
+    Login 'skpd'; [void](Ready-Id 'Nav_submission')
+    Invoke-Id 'Nav_submission'
+    $window = Wait-For { Find-Submission } 'submission form'
+    $list = Ready-Id 'SubList' $window
+    $item = Wait-For { $list.FindFirst([System.Windows.Automation.TreeScope]::Children,
+        [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)) } 'available subactivity'
+    $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    Scroll-Submission $window 45
+    (Ready-Id 'SubmissionBudget' $window).GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('1.250.000')
+    Invoke-Id 'SubmitDocument' $window
+    Expect-Text 'Unggah lampiran wajib: KAK.' $window
+    Scroll-Submission $window 100
+    Invoke-Id 'Pick_1' $window
+    $picker = Wait-For {
+        [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,
+            [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ClassNameProperty, '#32770'))
+    } 'native file picker'
+    $nameField = Wait-For {
+        $hostControl = Find-Id $picker '1148'
+        if ($null -ne $hostControl) {
+            if ($hostControl.Current.ControlType -eq [System.Windows.Automation.ControlType]::Edit) { $hostControl }
+            else { $hostControl.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+                [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::Edit)) }
+        }
+    } 'file name field'
+    $pdfPath = Join-Path $diagnostics 'submission-test.pdf'
+    $fixture = Get-Content (Join-Path $PSScriptRoot 'fixtures/documents.json') -Raw | ConvertFrom-Json
+    [System.IO.File]::WriteAllBytes($pdfPath, [Convert]::FromBase64String($fixture.pdf))
+    $nameField.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($pdfPath)
+    (Find-Id $picker '1').GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    Expect-Text 'submission-test.pdf' $window
+    Save-Window 'submission-form' ([IntPtr]$window.Current.NativeWindowHandle)
+    Control @{submission_mode='lost'}
+    Invoke-Id 'SubmitDocument' $window; Confirm-Submission $window
+    [void](Ready-Id 'RetryButton' $window)
+    if ((Stats).writes -ne 1) { throw 'Expected one committed submission before acknowledgement failure.' }
+    Invoke-Id 'RetryButton' $window
+    [void](Wait-For { $null -eq (Find-Submission) } 'submission success closes form')
+    if ((Stats).writes -ne 1) { throw 'Retry duplicated submission.' }
+    Expect-Text 'Pengajuan baru uji'
+    Control @{revision=$true}
+    Invoke-Id 'ReloadButton'; Select-FirstDocument
+    Invoke-Id 'EditSubmissionButton'
+    $window = Wait-For { Find-Submission } 'revision editor'
+    Expect-Text 'Perbaiki rincian anggaran dan KAK.' $window
+    Scroll-Submission $window 100
+    Expect-Text 'Tersimpan: KAK uji (0 KB)' $window
+    Invoke-Id 'ResubmitButton' $window; Confirm-Submission $window
+    [void](Wait-For { $null -eq (Find-Submission) } 'resubmission closes editor')
+    if ((Stats).writes -ne 2) { throw 'Resubmission did not commit once.' }
+    Select-FirstDocument
+    Expect-Text 'Pemeriksaan berkas'
+    Invoke-Id 'EditSubmissionButton'
+    $window = Wait-For { Find-Submission } 'edit before logout'
+    Select-Menu 'logout'; [void](Ready-Id 'LoginButton')
+    [void](Wait-For { $null -eq (Find-Submission) } 'logout closes submission editor')
+    Write-Host 'PASS: native SKPD form, required PDF, file picker, multipart submit, lost-ack retry without duplicate, revision note/resubmission, and logout cleanup.'
+}
+
 try {
     if (Test-Path $ready) { Remove-Item $ready }
     $server = Start-Process -FilePath (Get-Command python).Source -ArgumentList @((Join-Path $PSScriptRoot 'fixtures/api_server.py'),'--ready-file',$ready) -PassThru
@@ -213,9 +290,14 @@ try {
         Select-Menu 'logout'; [void](Ready-Id 'LoginButton')
         Write-Host "PASS: HTTP login, role menu, documents, and logout for $($case[0])."
     }
+    Test-Submissions
 }
 catch {
-    if ($null -ne $process -and !$process.HasExited) { Save-Window 'failure' }
+    if ($null -ne $process -and !$process.HasExited) {
+        Save-Window 'failure'
+        $submission = Find-Submission
+        if ($null -ne $submission) { Save-Window 'submission-failure' ([IntPtr]$submission.Current.NativeWindowHandle) }
+    }
     throw
 }
 finally {

@@ -219,7 +219,7 @@ public sealed partial class SubmissionWindow : Window
     }
     private void SetBusy(bool busy)
     {
-        FormPanel.IsEnabled = !busy && _pending is null;
+        SubmissionScroll.IsEnabled = !busy && _pending is null;
         SaveButton.IsEnabled = ResubmitButton.IsEnabled = !busy && _ready && _pending is null;
         RetryButton.IsEnabled = !busy;
         CancelButton.Visibility = BusyBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;

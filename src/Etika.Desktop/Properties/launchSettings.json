@@ -1,7 +1,15 @@
 {
   "profiles": {
     "ETIKA Desktop (Unpackaged)": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "nativeDebugging": false
+    },
+    "ETIKA UI Preview": {
+      "commandName": "Project",
+      "nativeDebugging": false,
+      "environmentVariables": {
+        "ETIKA_UI_PREVIEW": "Admin"
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 
 Aplikasi Windows native C# + WinUI 3 yang membaca data ETIKA melalui API pada backend Laravel existing. Source desktop dipisahkan dari proyek web; database dan penyimpanan dokumen tetap berada pada server ETIKA.
 
-Status v0.1.2: build Release x64, build solution Debug x64, 16 pengujian klien, dan uji startup untuk kedua konfigurasi berhasil pada runner Windows. Integrasi staging dan pengujian fitur interaktif masih diperlukan.
+Source v0.2.0: ruang kerja WinUI dengan menu peran, kartu dokumen, tema, dan pratinjau UI khusus Debug. Panduan [desain/menu](docs/UI_WORKSPACE.md) dan [F5 + XAML Hot Reload](docs/DEVELOPMENT_WINDOWS.md). Paket v0.1.2 di bawah adalah build sebelumnya; lihat workflow terbaru untuk hasil validasi source ini.
 
 ## Unduh aplikasi Windows x64
 
@@ -10,7 +10,7 @@ Status v0.1.2: build Release x64, build solution Debug x64, 16 pengujian klien, 
 
 Ekstrak ZIP v0.1.2 ke folder baru, lalu jalankan Etika.Desktop.exe dari folder tersebut. Seluruh DLL dan file pendukung hasil publish harus tetap berada bersama executable. Ini paket portable hasil publish; installer dan penandatanganan belum disiapkan.
 
-Aplikasi belum dapat login ke server produksi sebelum API desktop diterapkan dan diaktifkan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
+Login memerlukan API desktop yang sudah diterapkan dan diaktifkan pada server tujuan. Gunakan alamat staging yang sudah memiliki API sesuai runbook backend.
 
 ## Fitur source yang tersedia
 

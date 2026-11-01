@@ -23,6 +23,12 @@ jobs:
       - name: Verify Debug application startup
         shell: pwsh
         run: ./scripts/Test-Startup.ps1 -PublishDirectory src/Etika.Desktop/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64 -DiagnosticsDirectory artifacts/debug-startup-diagnostics
+      - name: Verify role navigation with offline preview
+        shell: pwsh
+        run: ./scripts/Test-WorkspacePreview.ps1 -PublishDirectory src/Etika.Desktop/bin/x64/Debug/net10.0-windows10.0.26100.0/win-x64
+      - name: Verify Release does not enable preview
+        shell: pwsh
+        run: ./scripts/Test-WorkspacePreview.ps1 -PublishDirectory artifacts/Etika.Desktop -PreviewMustBeDisabled -DiagnosticsDirectory artifacts/release-preview-check
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -30,6 +36,8 @@ jobs:
           path: |
             artifacts/startup-diagnostics
             artifacts/debug-startup-diagnostics
+            artifacts/workspace-preview
+            artifacts/release-preview-check
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: success()

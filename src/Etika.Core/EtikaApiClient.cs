@@ -64,9 +64,16 @@ public sealed class EtikaApiClient : IDisposable
     public Task<DocumentDetail> DocumentAsync(string id, CancellationToken ct = default) =>
         DataAsync<DocumentDetail>(HttpMethod.Get, $"dokumen/{Uri.EscapeDataString(id)}", null, ct);
     public Task<PageResult<DocumentSummary>> DocumentsAsync(int year, int page, string search,
-        CancellationToken ct = default) => JsonAsync<PageResult<DocumentSummary>>(
-            HttpMethod.Get, $"dokumen?tahun={year}&page={page}&per_page=20&q={Uri.EscapeDataString(search)}",
-            null, ct);
+        CancellationToken ct = default) => DocumentsAsync(year, page, search, null, ct);
+
+    public Task<PageResult<DocumentSummary>> DocumentsAsync(int year, int page, string search,
+        int? status, CancellationToken ct = default)
+    {
+        if (status is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(status));
+        var filter = status is null ? "" : $"&status={status}";
+        return JsonAsync<PageResult<DocumentSummary>>(HttpMethod.Get,
+            $"dokumen?tahun={year}&page={page}&per_page=20&q={Uri.EscapeDataString(search)}{filter}", null, ct);
+    }
 
     public async Task LogoutAsync(CancellationToken ct = default)
     {

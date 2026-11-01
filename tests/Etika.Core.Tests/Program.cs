@@ -170,6 +170,41 @@ await Check("does not transmit credentials before a verification challenge is re
     await Throws(422, async () => await api.LoginAsync("user@example.test", "password", "", "", "PC"));
     Assert(!called && !api.HasToken);
 });
+await Check("shows only the supported document views for each single role", () =>
+{
+    Assert(WorkspaceProfile.ForLevel("SKPD").Documents.Select(x => x.Key).SequenceEqual(["own"]));
+    Assert(WorkspaceProfile.ForLevel("Berkas").Documents.Single().Status == 1);
+    Assert(WorkspaceProfile.ForLevel("TAPD").Documents.Single().Status == 3);
+    Assert(WorkspaceProfile.ForLevel("Eksekutif").Documents.Single().Key == "all");
+    Assert(WorkspaceProfile.ForLevel("Admin").Documents.Select(x => x.Key).SequenceEqual(["all", "berkas", "tapd"]));
+    return Task.CompletedTask;
+});
+await Check("normalizes multiple roles without advertising an unsupported ownership filter", () =>
+{
+    var profile = WorkspaceProfile.ForLevel(" skpd | TaPd,SKPD ");
+    Assert(profile.RoleLabel == "SKPD · TAPD");
+    Assert(profile.Documents.Select(x => x.Key).SequenceEqual(["accessible", "tapd"]));
+    Assert(profile.Documents[0].Status is null && profile.Documents[1].Status == 3);
+    Assert(WorkspaceProfile.ForLevel("ADMIN|SKPD").Documents.All(x => x.Key != "own"));
+    return Task.CompletedTask;
+});
+await Check("unknown roles do not receive document navigation", () =>
+{
+    Assert(WorkspaceProfile.ForLevel("unknown").Documents.Count == 0);
+    Assert(WorkspaceProfile.ForLevel(null).Documents.Count == 0);
+    return Task.CompletedTask;
+});
+await Check("sends stage filters together with search and pagination to the API", async () =>
+{
+    using var api = Client(request =>
+    {
+        var query = request.RequestUri!.Query;
+        Assert(query.Contains("status=3") && query.Contains("page=2") && query.Contains("tahun=2026"));
+        Assert(query.Contains("q=a%26b"));
+        return Json("""{"data":[],"meta":{"current_page":2,"last_page":2,"total":21,"per_page":20}}""");
+    });
+    await api.DocumentsAsync(2026, 2, "a&b", WorkspaceProfile.ForLevel("TAPD").Documents.Single().Status);
+});
 Console.WriteLine($"{passed} core client checks passed.");
 
 sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

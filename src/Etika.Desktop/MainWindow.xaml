@@ -4,110 +4,271 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:core="using:Etika.Core"
     Title="ETIKA Desktop">
-    <Grid x:Name="Root" Loaded="Root_Loaded" RowDefinitions="Auto,*,Auto"
-          Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <InfoBar x:Name="ErrorBar" Grid.Row="0" IsOpen="False" Severity="Error" Margin="16,8" />
-        <ScrollViewer x:Name="LoginPanel" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Width="380" Spacing="18" Margin="24,40" HorizontalAlignment="Center">
-                <TextBlock Text="ETIKA" FontSize="38" FontWeight="SemiBold" />
-                <TextBlock Text="Ruang kerja verifikasi dokumen" FontSize="17"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-                <TextBox x:Name="ServerBox" Header="Server ETIKA" MaxLength="500"
-                         Text="https://etika.kukarkab.com" />
-                <TextBox x:Name="EmailBox" Header="Email" MaxLength="255" />
-                <PasswordBox x:Name="PasswordBox" Header="Kata sandi" MaxLength="1024" />
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Image x:Name="CaptchaImage" Width="180" Height="60" Stretch="Uniform"
-                           AutomationProperties.Name="Gambar kode verifikasi" />
-                    <Button Content="Ganti kode" Click="Challenge_Click" VerticalAlignment="Center" />
-                </StackPanel>
-                <TextBox x:Name="CaptchaBox" Header="Kode verifikasi" MaxLength="30" />
-                <CheckBox x:Name="RememberBox" Content="Ingat sesi di perangkat ini" />
-                <Button x:Name="LoginButton" Content="Masuk" Click="Login_Click" IsEnabled="False"
-                        Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" />
-                <TextBlock Text="Gunakan akun yang sama dengan ETIKA web." TextWrapping="Wrap"
-                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-            </StackPanel>
-        </ScrollViewer>
-        <ContentControl x:Name="Workspace" Grid.Row="1" Visibility="Collapsed"
-                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-        <Grid ColumnDefinitions="240,*">
-            <Border Background="{ThemeResource LayerFillColorAltBrush}" Padding="24">
-                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto">
-                    <TextBlock Text="ETIKA" FontSize="28" FontWeight="SemiBold" />
-                    <StackPanel Grid.Row="1" Spacing="4" Margin="0,28,0,24">
-                        <TextBlock x:Name="UserName" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                        <TextBlock x:Name="UserRole" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                    <ComboBox x:Name="YearBox" Grid.Row="2" Header="Tahun anggaran"
-                              DisplayMemberPath="Tahun" HorizontalAlignment="Stretch"
-                              SelectionChanged="Year_Changed" />
-                    <TextBlock Grid.Row="3" Text="Dokumen" Margin="0,24,0,12" FontWeight="SemiBold" FontSize="18" />
-                    <Button Grid.Row="4" Content="Muat ulang" Click="Refresh_Click" HorizontalAlignment="Stretch" />
-                    <Button Grid.Row="6" Content="Keluar" Click="Logout_Click" HorizontalAlignment="Stretch" />
-                </Grid>
-            </Border>
-            <Grid Grid.Column="1" Padding="24" RowDefinitions="Auto,Auto,*,Auto">
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Dokumen" FontSize="28" FontWeight="SemiBold" />
-                    <TextBlock Text="Buka dokumen dan lampiran sesuai kewenangan Anda."
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
-                </StackPanel>
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,20,0,16">
+    <Grid x:Name="Root" Loaded="Root_Loaded" SizeChanged="Root_SizeChanged"
+          RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <TitleBar x:Name="AppTitleBar" Title="ETIKA" Subtitle="Ruang kerja dokumen">
+            <TitleBar.IconSource><FontIconSource Glyph="&#xE8A5;" /></TitleBar.IconSource>
+            <TitleBar.Content>
+                <Grid x:Name="HeaderSearch" Visibility="Collapsed" MaxWidth="560" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="16,0">
                     <TextBox x:Name="SearchBox" PlaceholderText="Cari kode atau nama subkegiatan" MaxLength="150"
-                             KeyDown="Search_KeyDown" />
-                    <Button Grid.Column="1" Content="Cari" Click="Search_Click" />
+                             KeyDown="Search_KeyDown" AutomationProperties.Name="Cari dokumen" />
+                    <Button Grid.Column="1" Click="Search_Click" AutomationProperties.Name="Jalankan pencarian">
+                        <FontIcon Glyph="&#xE721;" FontSize="16" />
+                    </Button>
                 </Grid>
-                <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="20">
-                    <Grid RowDefinitions="Auto,*">
-                        <TextBlock x:Name="EmptyState" Text="Belum ada dokumen untuk pilihan ini."
-                                   TextWrapping="Wrap" Margin="8,12" Visibility="Collapsed" />
-                        <ListView x:Name="DocumentsList" Grid.Row="1" SelectionChanged="Document_Changed"
-                                  SelectionMode="Single" HorizontalContentAlignment="Stretch">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="core:DocumentSummary">
-                                    <StackPanel Spacing="6" Padding="8,12">
-                                        <TextBlock Text="{x:Bind DisplayTitle}" TextWrapping="Wrap" FontWeight="SemiBold" />
-                                        <TextBlock Text="{x:Bind DisplaySubtitle}" TextWrapping="Wrap" FontSize="12"
-                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                                            <TextBlock Text="{x:Bind StatusLabel}" FontSize="12" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Column="1" Text="{x:Bind DisplayPagu}" FontWeight="SemiBold" />
-                                        </Grid>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                    <ScrollViewer Grid.Column="1">
-                        <StackPanel x:Name="DetailPanel" Spacing="16" Padding="12,8">
-                            <TextBlock x:Name="DetailTitle" Text="Pilih dokumen" FontSize="22"
-                                       FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <TextBlock x:Name="DetailSubtitle" TextWrapping="Wrap"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock x:Name="DetailStatus" TextWrapping="Wrap" />
-                            <TextBlock x:Name="DetailBudget" TextWrapping="Wrap" />
-                            <TextBlock x:Name="DetailNotes" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
-                            <TextBlock Text="Lampiran PDF" FontWeight="SemiBold" FontSize="16" />
-                            <ItemsControl x:Name="AttachmentsList">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="core:Attachment">
-                                        <Button Content="{x:Bind Nama}" Tag="{x:Bind Id}" Click="Attachment_Click"
-                                                Margin="0,0,0,8" HorizontalAlignment="Stretch" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
-                <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
-                    <Button x:Name="PreviousButton" Content="Sebelumnya" Click="Previous_Click" />
-                    <TextBlock x:Name="PageLabel" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    <Button x:Name="NextButton" Grid.Column="2" Content="Berikutnya" Click="Next_Click" />
-                </Grid>
+            </TitleBar.Content>
+            <TitleBar.RightHeader>
+                <Button x:Name="ProfileButton" Visibility="Collapsed" Background="Transparent" BorderThickness="0"
+                        AutomationProperties.Name="Menu akun">
+                    <PersonPicture x:Name="HeaderAvatar" Width="32" Height="32" />
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="Akun saya" Icon="Contact" Click="Account_Click" />
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="Keluar" Click="Logout_Click" />
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </TitleBar.RightHeader>
+        </TitleBar>
+        <InfoBar x:Name="ErrorBar" Grid.Row="1" IsOpen="False" Severity="Error" Margin="24,4,24,8" />
+        <Border x:Name="PreviewStrip" Grid.Row="2" Visibility="Collapsed" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Padding="24,8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE7B3;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="Pratinjau UI · Data contoh · Tanpa koneksi server" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox x:Name="PreviewRoleBox" Grid.Column="1" MinWidth="160" SelectionChanged="PreviewRole_Changed"
+                          AutomationProperties.Name="Peran pratinjau" />
             </Grid>
-        </Grid>
-        </ContentControl>
-        <ProgressBar x:Name="BusyBar" Grid.Row="2" IsIndeterminate="True" Visibility="Collapsed" />
+        </Border>
+        <ScrollViewer x:Name="LoginPanel" Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalContentAlignment="Stretch">
+            <Grid x:Name="LoginLayout" MaxWidth="1080" Margin="32,40" ColumnSpacing="64" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="LoginIntroColumn" Width="*" />
+                    <ColumnDefinition Width="420" />
+                </Grid.ColumnDefinitions>
+                <StackPanel x:Name="LoginIntro" Spacing="24" VerticalAlignment="Center">
+                    <Border Width="64" Height="64" CornerRadius="18" HorizontalAlignment="Left" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                        <FontIcon Glyph="&#xE8A5;" FontSize="30" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                    </Border>
+                    <TextBlock Text="Dokumen tertata.&#x0a;Kerja lebih terarah." FontSize="38" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="Akses dokumen anggaran dan lampiran dalam satu ruang kerja, sesuai kewenangan akun ETIKA Anda."
+                               FontSize="16" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon Glyph="&#xE73E;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                        <TextBlock Text="Terhubung dengan ETIKA web" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+                <Border Grid.Column="1" Style="{StaticResource EtikaCardStyle}" Padding="28">
+                    <StackPanel Spacing="16">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Selamat datang" FontSize="28" FontWeight="SemiBold" />
+                            <TextBlock Text="Masuk menggunakan akun ETIKA Anda." TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                        <TextBox x:Name="ServerBox" Header="Server ETIKA" MaxLength="500" Text="https://etika.kukarkab.com" />
+                        <TextBox x:Name="EmailBox" Header="Email" MaxLength="255" PlaceholderText="nama@instansi.go.id" />
+                        <PasswordBox x:Name="PasswordBox" Header="Kata sandi" MaxLength="1024" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Border CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}" MinHeight="60">
+                                <Image x:Name="CaptchaImage" Height="60" Stretch="Uniform" AutomationProperties.Name="Gambar kode verifikasi" />
+                            </Border>
+                            <Button Grid.Column="1" Content="Ganti kode" Click="Challenge_Click" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBox x:Name="CaptchaBox" Header="Kode verifikasi" MaxLength="30" PlaceholderText="Masukkan kode di atas" />
+                        <CheckBox x:Name="RememberBox" Content="Ingat sesi di perangkat ini" />
+                        <Button x:Name="LoginButton" Content="Masuk" Click="Login_Click" IsEnabled="False"
+                                Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </ScrollViewer>
+        <NavigationView x:Name="Workspace" Grid.Row="3" Visibility="Collapsed" AutomationProperties.AutomationId="WorkspaceNavigation"
+                        PaneDisplayMode="Auto" OpenPaneLength="248" CompactPaneLength="56" IsPaneOpen="True"
+                        IsBackButtonVisible="Collapsed" IsTitleBarAutoPaddingEnabled="False" ItemInvoked="Navigation_Invoked">
+            <NavigationView.PaneFooter>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12" Margin="16,16,12,20">
+                    <PersonPicture x:Name="SidebarAvatar" Width="36" Height="36" />
+                    <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock x:Name="UserName" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="UserRole" Style="{StaticResource EtikaCaptionStyle}" />
+                    </StackPanel>
+                </Grid>
+            </NavigationView.PaneFooter>
+            <Grid Padding="24,20,24,16" RowDefinitions="Auto,*" RowSpacing="20">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                    <StackPanel Spacing="6" VerticalAlignment="Center">
+                        <TextBlock x:Name="PageTitle" Text="Beranda" FontSize="28" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PageDescription" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" MaxWidth="700" HorizontalAlignment="Left" />
+                    </StackPanel>
+                    <ComboBox x:Name="YearBox" Grid.Column="1" Width="144" Header="Tahun anggaran" DisplayMemberPath="Tahun" SelectionChanged="Year_Changed" />
+                    <Button Grid.Column="2" VerticalAlignment="Bottom" Click="Refresh_Click" ToolTipService.ToolTip="Muat ulang dokumen" AutomationProperties.Name="Muat ulang dokumen">
+                        <FontIcon Glyph="&#xE72C;" FontSize="16" />
+                    </Button>
+                </Grid>
+                <ScrollViewer x:Name="HomePanel" Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="20" MaxWidth="1200" HorizontalAlignment="Stretch">
+                        <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="16" Padding="32">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="RUANG KERJA ETIKA" FontSize="12" CharacterSpacing="120" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                <TextBlock x:Name="WelcomeTitle" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                <TextBlock x:Name="ScopeText" FontSize="15" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left" Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                <Button x:Name="OpenDocumentsButton" Content="Buka dokumen" Click="OpenDocuments_Click" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                            <Border Style="{StaticResource EtikaCardStyle}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock x:Name="HomeCountCaption" Text="Dokumen sesuai akses" Style="{StaticResource EtikaCaptionStyle}" />
+                                    <TextBlock x:Name="HomeCount" Text="—" FontSize="32" FontWeight="SemiBold" />
+                                    <TextBlock Text="Pada tahun anggaran terpilih" Style="{StaticResource EtikaCaptionStyle}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Style="{StaticResource EtikaCardStyle}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="Area kerja Anda" Style="{StaticResource EtikaCaptionStyle}" />
+                                    <TextBlock x:Name="HomeRole" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Text="Menu disesuaikan dengan peran akun" Style="{StaticResource EtikaCaptionStyle}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="Akses cepat" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,0" />
+                        <ItemsControl x:Name="HomeShortcuts">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:WorkspaceMenu">
+                                    <Button Tag="{x:Bind Key}" Click="Shortcut_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="20" Margin="0,0,0,10">
+                                        <Grid ColumnDefinitions="32,*,20" ColumnSpacing="16">
+                                            <FontIcon Glyph="{x:Bind Glyph}" FontSize="22" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            <StackPanel Grid.Column="1" Spacing="4">
+                                                <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{x:Bind Description}" Style="{StaticResource EtikaCaptionStyle}" />
+                                            </StackPanel>
+                                            <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="14" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+                <Grid x:Name="DocumentsPanel" Grid.Row="1" Visibility="Collapsed" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <TextBlock x:Name="DocumentsCount" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="6" Padding="10,5">
+                            <TextBlock x:Name="FilterCaption" Text="Seluruh status" FontSize="12" />
+                        </Border>
+                    </Grid>
+                    <Grid x:Name="DocumentsLayout" Grid.Row="1" ColumnSpacing="16" SizeChanged="DocumentsLayout_SizeChanged">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition x:Name="DetailsColumn" Width="400" /></Grid.ColumnDefinitions>
+                        <Border x:Name="ListCard" Style="{StaticResource EtikaCardStyle}" Padding="8">
+                            <Grid>
+                                <ListView x:Name="DocumentsList" SelectionChanged="Document_Changed" SelectionMode="Single"
+                                          ItemContainerStyle="{StaticResource EtikaDocumentItemStyle}" HorizontalContentAlignment="Stretch">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="core:DocumentSummary">
+                                            <Grid ColumnDefinitions="40,*" ColumnSpacing="14" Padding="0,4">
+                                                <Border Width="40" Height="44" VerticalAlignment="Top" CornerRadius="8" Background="{ThemeResource LayerFillColorDefaultBrush}">
+                                                    <FontIcon Glyph="&#xE8A5;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Spacing="7">
+                                                    <TextBlock Text="{x:Bind DisplayTitle}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
+                                                    <TextBlock Text="{x:Bind DisplaySubtitle}" Style="{StaticResource EtikaCaptionStyle}" />
+                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                        <TextBlock Text="{x:Bind StatusLabel}" FontSize="12" TextWrapping="Wrap" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayPagu}" FontSize="13" FontWeight="SemiBold" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                                <StackPanel x:Name="EmptyState" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" Margin="24">
+                                    <FontIcon Glyph="&#xE8B7;" FontSize="36" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="EmptyStateText" Text="Belum ada dokumen untuk pilihan ini." TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="DetailCard" Grid.Column="1" Style="{StaticResource EtikaCardStyle}" Padding="0">
+                            <Grid>
+                                <StackPanel x:Name="DetailEmpty" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="28" Spacing="16">
+                                    <FontIcon Glyph="&#xE8A5;" FontSize="40" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock Text="Pilih sebuah dokumen" FontSize="18" FontWeight="SemiBold" TextAlignment="Center" />
+                                    <TextBlock Text="Rincian dan lampiran PDF akan ditampilkan di sini." TextWrapping="Wrap" TextAlignment="Center" MaxWidth="260" Style="{StaticResource EtikaCaptionStyle}" />
+                                </StackPanel>
+                                <ScrollViewer x:Name="DetailScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="DetailPanel" Spacing="18" Padding="24">
+                                        <Button x:Name="DetailBackButton" Content="Kembali ke daftar" Click="DetailBack_Click" Visibility="Collapsed" />
+                                        <TextBlock Text="RINCIAN DOKUMEN" Style="{StaticResource EtikaCaptionStyle}" CharacterSpacing="80" />
+                                        <TextBlock x:Name="DetailTitle" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="DetailSubtitle" Style="{StaticResource EtikaCaptionStyle}" />
+                                        <Border CornerRadius="6" Background="{ThemeResource LayerFillColorDefaultBrush}" Padding="10,7" HorizontalAlignment="Left">
+                                            <TextBlock x:Name="DetailStatus" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" />
+                                        </Border>
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Text="Pagu RKA" Style="{StaticResource EtikaCaptionStyle}" />
+                                            <TextBlock x:Name="DetailBudget" TextWrapping="Wrap" FontSize="22" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="DetailNotes" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                        <Border Height="1" Background="{ThemeResource CardStrokeColorDefaultBrush}" />
+                                        <TextBlock x:Name="AttachmentHeading" Text="Lampiran PDF" FontWeight="SemiBold" FontSize="16" />
+                                        <ItemsControl x:Name="AttachmentsList">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="core:Attachment">
+                                                    <Button Tag="{x:Bind Id}" Click="Attachment_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Padding="12" Margin="0,0,0,8">
+                                                        <Grid ColumnDefinitions="24,*,16" ColumnSpacing="10">
+                                                            <FontIcon Glyph="&#xEA90;" FontSize="20" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                                            <TextBlock Grid.Column="1" Text="{x:Bind Nama}" TextWrapping="Wrap" />
+                                                            <FontIcon Grid.Column="2" Glyph="&#xE8A7;" FontSize="12" />
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Button x:Name="PreviousButton" Content="Sebelumnya" Click="Previous_Click" />
+                        <TextBlock x:Name="PageLabel" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource EtikaCaptionStyle}" />
+                        <Button x:Name="NextButton" Grid.Column="2" Content="Berikutnya" Click="Next_Click" />
+                    </Grid>
+                </Grid>
+                <ScrollViewer x:Name="AccountPanel" Grid.Row="1" Visibility="Collapsed">
+                    <Border Style="{StaticResource EtikaCardStyle}" MaxWidth="760" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <StackPanel Spacing="20">
+                            <PersonPicture x:Name="AccountAvatar" Width="72" Height="72" HorizontalAlignment="Left" />
+                            <TextBlock x:Name="AccountName" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock x:Name="AccountEmail" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                            <StackPanel Spacing="6"><TextBlock Text="Peran" Style="{StaticResource EtikaCaptionStyle}" /><TextBlock x:Name="AccountRole" TextWrapping="Wrap" /></StackPanel>
+                            <StackPanel Spacing="6"><TextBlock Text="Cakupan akses" Style="{StaticResource EtikaCaptionStyle}" /><TextBlock x:Name="AccountScope" TextWrapping="Wrap" /></StackPanel>
+                            <Button Content="Keluar dari akun" Click="Logout_Click" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
+                <ScrollViewer x:Name="SettingsPanel" Grid.Row="1" Visibility="Collapsed">
+                    <StackPanel Spacing="16" MaxWidth="760" HorizontalAlignment="Left">
+                        <Border Style="{StaticResource EtikaCardStyle}">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="Tampilan" FontSize="18" FontWeight="SemiBold" />
+                                <ComboBox x:Name="ThemeBox" Header="Tema aplikasi" SelectionChanged="Theme_Changed" SelectedIndex="0" MinWidth="220">
+                                    <ComboBoxItem Content="Ikuti Windows" /><ComboBoxItem Content="Terang" /><ComboBoxItem Content="Gelap" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource EtikaCardStyle}">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Server ETIKA" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="ConnectedServer" TextWrapping="Wrap" IsTextSelectionEnabled="True" />
+                                <TextBlock Text="Untuk mengganti server, keluar lalu ubah alamat pada halaman masuk." Style="{StaticResource EtikaCaptionStyle}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </NavigationView>
+        <ProgressBar x:Name="BusyBar" Grid.Row="4" IsIndeterminate="True" Visibility="Collapsed" />
     </Grid>
 </Window>
